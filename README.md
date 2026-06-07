@@ -66,6 +66,6 @@ For full operational docs including health checks, troubleshooting, and update p
 ## Companion Repo
 
 Claude Code configuration (CLAUDE.md, SDD agents, slash commands, skills) lives in the dotfiles repo:
-[https://github.com/placeholder/dotfiles](https://github.com/placeholder/dotfiles)
+[https://github.com/toniJC/dotfiles](https://github.com/toniJC/dotfiles)
 
 Clone it and run its `install.sh` to symlink `~/.claude` from the versioned config.
