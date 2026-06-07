@@ -1,3 +1,5 @@
+[🇪🇸 Español](README.es.md) | 🇬🇧 English
+
 # schema-service
 
 Typed middleware between the SDD orchestrator and local LLM workers via LiteLLM.

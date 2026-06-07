@@ -1,16 +1,16 @@
-🇪🇸 Español | [🇬🇧 English](local-models.en.md)
+[🇪🇸 Español](local-models.md) | 🇬🇧 English
 
-# Guía de modelos locales
+# Local models guide
 
-Esta guía cubre cómo configurar el entorno MLX y descargar los modelos locales para ejecutar el stack sin depender de APIs en la nube.
+This guide covers how to set up the MLX environment and download the local models to run the stack without relying on cloud APIs.
 
-> **Requisito de hardware**: Apple Silicon (M1 Pro o superior). Los modelos de 32B requieren al menos 32 GB de RAM unificada; el de 70B requiere 64 GB o más.
+> **Hardware requirement**: Apple Silicon (M1 Pro or higher). The 32B models require at least 32 GB of unified RAM; the 70B model requires 64 GB or more.
 
 ---
 
-## 1. Crear el entorno virtual MLX
+## 1. Create the MLX virtual environment
 
-El stack asume un virtualenv en `~/projects/mlx-qwen/mlx_env/`. Este entorno contiene `mlx_lm`, `mcp-proxy` y el resto de dependencias locales.
+The stack assumes a virtualenv at `~/projects/mlx-qwen/mlx_env/`. This environment contains `mlx_lm`, `mcp-proxy`, and the rest of the local dependencies.
 
 ```bash
 mkdir -p ~/projects/mlx-qwen
@@ -18,51 +18,51 @@ python3.11 -m venv ~/projects/mlx-qwen/mlx_env
 source ~/projects/mlx-qwen/mlx_env/bin/activate
 ```
 
-Instalar dependencias:
+Install dependencies:
 
 ```bash
 pip install --upgrade pip
 
-# MLX runtime y servidor de modelos
+# MLX runtime and model server
 pip install mlx mlx-lm
 
-# MCP proxy (puente stdio→HTTP para Docker)
+# MCP proxy (stdio→HTTP bridge for Docker)
 pip install mcp-proxy
 
-# Dependencias de Schema Service (opcional aquí si prefieres instalar en su propio venv)
+# Schema Service dependencies (optional here if you prefer to install in its own venv)
 pip install fastapi uvicorn instructor openai httpx pydantic
 
 # MCP SDK
 pip install mcp
 ```
 
-Verificar:
+Verify:
 
 ```bash
-mlx_lm.server --help   # debe mostrar opciones
-mcp-proxy --version    # debe mostrar versión
+mlx_lm.server --help   # should display options
+mcp-proxy --version    # should display version
 ```
 
 ---
 
-## 2. Instalar llama.cpp (para Devstral GGUF)
+## 2. Install llama.cpp (for Devstral GGUF)
 
-Devstral corre via `llama-server` (llama.cpp), no MLX. Instalar via Homebrew:
+Devstral runs via `llama-server` (llama.cpp), not MLX. Install via Homebrew:
 
 ```bash
 brew install llama.cpp
 ```
 
-Verificar:
+Verify:
 ```bash
 llama-server --version
 ```
 
 ---
 
-## 3. Descargar los modelos
+## 3. Download the models
 
-Crea el directorio de modelos:
+Create the models directory:
 
 ```bash
 mkdir -p ~/models
@@ -78,13 +78,13 @@ mlx_lm.convert \
   --upload-repo ""
 ```
 
-O descarga directa desde HuggingFace:
+Or direct download from HuggingFace:
 ```bash
 huggingface-cli download mlx-community/Qwen2.5-Coder-32B-Instruct-4bit \
   --local-dir ~/models/qwen2.5-coder-32b-mlx
 ```
 
-Tamaño aproximado: **18 GB**
+Approximate size: **18 GB**
 
 ---
 
@@ -95,7 +95,7 @@ huggingface-cli download mlx-community/DeepSeek-R1-Distill-Qwen-32B-4bit \
   --local-dir ~/models/deepseek-r1-32b-mlx
 ```
 
-Tamaño aproximado: **18 GB**
+Approximate size: **18 GB**
 
 ---
 
@@ -106,18 +106,18 @@ huggingface-cli download mlx-community/Hermes-3-Llama-3.1-70B-4bit \
   --local-dir ~/models/hermes3-70b-mlx
 ```
 
-Tamaño aproximado: **40 GB**
+Approximate size: **40 GB**
 
 ---
 
-### Llama 3.3 70B (alias: `local-architect` — disponible, sin fase asignada aún)
+### Llama 3.3 70B (alias: `local-architect` — available, no assigned phase yet)
 
 ```bash
 huggingface-cli download mlx-community/Llama-3.3-70B-Instruct-4bit \
   --local-dir ~/models/llama3.3-70b-mlx
 ```
 
-Tamaño aproximado: **40 GB**
+Approximate size: **40 GB**
 
 ---
 
@@ -130,13 +130,13 @@ huggingface-cli download mistralai/Devstral-Small-2505-GGUF \
   --local-dir ~/models/devstral-small-2505-gguf
 ```
 
-Tamaño aproximado: **15 GB**
+Approximate size: **15 GB**
 
 ---
 
-## 4. Verificar la estructura de modelos
+## 4. Verify the model structure
 
-Al terminar, `~/models/` debe tener esta estructura:
+When finished, `~/models/` should have this structure:
 
 ```
 ~/models/
@@ -148,49 +148,49 @@ Al terminar, `~/models/` debe tener esta estructura:
     └── Devstral-Small-2505-Q4_K_M.gguf
 ```
 
-Verifica con `agentic-up.sh`:
+Verify with `agentic-up.sh`:
 ```bash
 bash bin/agentic-up.sh --check
 ```
 
-Si algún modelo falta, el script reportará el error exacto con la ruta esperada.
+If any model is missing, the script will report the exact error with the expected path.
 
 ---
 
-## 5. Arranque manual de modelos (sin agentic-up.sh)
+## 5. Manual model startup (without agentic-up.sh)
 
-Si prefieres arrancar los modelos manualmente:
+If you prefer to start the models manually:
 
 ```bash
 source ~/projects/mlx-qwen/mlx_env/bin/activate
 
-# Qwen Coder — puerto 8000
+# Qwen Coder — port 8000
 mlx_lm.server --model ~/models/qwen2.5-coder-32b-mlx --port 8000 --host 0.0.0.0 &
 
-# DeepSeek R1 — puerto 8001
+# DeepSeek R1 — port 8001
 mlx_lm.server --model ~/models/deepseek-r1-32b-mlx --port 8001 --host 0.0.0.0 &
 
-# Hermes 3 70B — puerto 8006 (debe escuchar en 0.0.0.0 para ser accesible desde Docker)
+# Hermes 3 70B — port 8006 (must listen on 0.0.0.0 to be accessible from Docker)
 mlx_lm.server --model ~/models/hermes3-70b-mlx --port 8006 --host 0.0.0.0 &
 
-# Llama 3.3 70B — puerto 8003
+# Llama 3.3 70B — port 8003
 mlx_lm.server --model ~/models/llama3.3-70b-mlx --port 8003 --host 0.0.0.0 &
 
-# Devstral GGUF — puerto 8004
+# Devstral GGUF — port 8004
 llama-server \
   --model ~/models/devstral-small-2505-gguf/Devstral-Small-2505-Q4_K_M.gguf \
   --port 8004 --host 0.0.0.0 \
   --n-gpu-layers 999 &
 
-# Devstral proxy (convierte tool calls al formato OpenAI) — puerto 8005
+# Devstral proxy (converts tool calls to OpenAI format) — port 8005
 python ~/bin/devstral-proxy.py &
 ```
 
 ---
 
-## 6. Sin modelos locales (solo API en la nube)
+## 6. Without local models (cloud API only)
 
-Si no tienes Apple Silicon o prefieres usar solo Anthropic, edita `litellm/litellm_config.yaml` y apunta todos los alias a `claude-sonnet` o `claude-haiku`:
+If you don't have Apple Silicon or prefer to use only Anthropic, edit `litellm/litellm_config.yaml` and point all aliases to `claude-sonnet` or `claude-haiku`:
 
 ```yaml
 models:
@@ -210,4 +210,4 @@ models:
       api_key: os.environ/ANTHROPIC_API_KEY
 ```
 
-El resto del stack (Hermes, Schema Service, Engram, Langfuse) funciona de forma idéntica — solo cambia el modelo que ejecuta cada fase.
+The rest of the stack (Hermes, Schema Service, Engram, Langfuse) works identically — only the model executing each phase changes.

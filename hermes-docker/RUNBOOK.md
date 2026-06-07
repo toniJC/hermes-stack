@@ -1,3 +1,5 @@
+🇪🇸 Español | [🇬🇧 English](RUNBOOK.en.md)
+
 # Local Agentic Stack — Runbook
 
 HermesAgent (Docker) orquesta flujos de trabajo SDD usando MiniMax M2.7 como LLM principal. Delega cada fase SDD a modelos MLX locales a través de Schema Service (:8010) y LiteLLM (:8002). Los artefactos se persisten en Engram (:7437). Todas las requests LiteLLM se observan en Langfuse (:3000).
@@ -41,6 +43,7 @@ Schema Service :8010  (FastAPI + Instructor + Pydantic v2)
 Local MLX models (mlx_lm.server):
   :8000  Qwen 2.5-Coder 32B   alias: local-coder      → spec, tasks, apply, archive, bmad-stories
   :8001  DeepSeek R1 32B       alias: local-thinking   → propose, design, bmad-analyze, bmad-prd, bmad-architect
+  :8003  Llama 3.3 70B         alias: local-architect  → disponible, sin fase asignada
   :8005  Devstral 24B          alias: local-devstral   → fallback / tool calling
   :8006  Hermes 3 70B          alias: local-hermes     → explore, verify, bmad-ux  [MUST bind 0.0.0.0]
   │
@@ -125,7 +128,7 @@ WORKSPACE_PATH=/path/to/your/project docker compose run --rm hermes hermes chat
 
 ```bash
 # Detener todos los servidores MLX en ejecución (Ctrl+C en cada terminal, o matar por puerto)
-lsof -ti :8000,:8001,:8005,:8006,:8002,:8010 | xargs kill -9
+lsof -ti :8000,:8001,:8003,:8005,:8006,:8002,:8010 | xargs kill -9
 
 # Detener Langfuse (datos persistidos en volumen Docker — no se pierden)
 cd ~/projects/langfuse-docker && docker compose down
@@ -287,6 +290,7 @@ Ver Section 17 de soul.md para el procedimiento completo con snippet jq.
 |------|-------|-------|-------|
 | :8000 | Qwen 2.5-Coder 32B | `local-coder` | |
 | :8001 | DeepSeek R1 32B | `local-thinking` | Tiene tokens de razonamiento interno antes de la salida visible |
+| :8003 | Llama 3.3 70B | `local-architect` | |
 | :8005 | Devstral 24B | `local-devstral` | fallback / tool calling |
 | :8006 | Hermes 3 70B | `local-hermes` | **Debe iniciarse con `--host 0.0.0.0`** |
 
@@ -345,7 +349,7 @@ Ver Section 17 de soul.md para el procedimiento completo con snippet jq.
   - T0: Docker Desktop (auto-start si no está corriendo)
   - T1: Engram (:7437)
   - T1b: mcp-proxy (:7438) — bridge stdio→HTTP/SSE para Docker
-  - T2: MLX models (:8000, :8001, :8004, :8005, :8006) — en paralelo con health-gating
+  - T2: MLX models (:8000, :8001, :8003, :8004, :8005, :8006) — en paralelo con health-gating
   - T3: devstral-proxy (:8005)
   - T4: Schema Service (:8010)
 - **LiteLLM no lo gestiona** — arranca vía launchd al encender el Mac
