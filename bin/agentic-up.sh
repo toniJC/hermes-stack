@@ -5,7 +5,7 @@
 #   T0 verify: LiteLLM :8002 (launchd-managed)
 #   T1:        Engram :7437
 #   T1b:       Engram MCP proxy :7438 (stdio→HTTP/SSE bridge for Docker agents)
-#   T2 par:    MLX coder :8000 | MLX thinking :8001 | llama devstral :8004 | MLX hermes :8006
+#   T2 par:    MLX coder :8000 | MLX thinking :8001 | llama devstral :8004 | MLX hermes :8006 | MLX architect :8003
 #   T3:        devstral-proxy :8005
 #   T4:        Schema Service :8010
 #
@@ -39,6 +39,7 @@ DEVSTRAL_GGUF="${MODELS_DIR}/devstral-small-2505-gguf/Devstral-Small-2505-Q4_K_M
 MLX_CODER="${MODELS_DIR}/qwen2.5-coder-32b-mlx"
 MLX_THINKING="${MODELS_DIR}/deepseek-r1-32b-mlx"
 MLX_HERMES="${MODELS_DIR}/hermes3-70b-mlx"
+MLX_ARCHITECT="${MODELS_DIR}/llama3.3-70b-mlx"
 
 LANGFUSE_DOCKER_DIR="${LANGFUSE_DOCKER_DIR:-$HOME/projects/langfuse-docker}"
 LANGFUSE_TIMEOUT=60
@@ -145,6 +146,7 @@ preflight() {
   [[ -d "$MLX_CODER"    ]]  || die "MLX coder model missing: $MLX_CODER"
   [[ -d "$MLX_THINKING" ]]  || die "MLX thinking model missing: $MLX_THINKING"
   [[ -d "$MLX_HERMES"   ]]  || die "MLX hermes model missing: $MLX_HERMES"
+  [[ -d "$MLX_ARCHITECT" ]] || die "MLX architect model missing: $MLX_ARCHITECT"
   [[ -d "$SCHEMA_SERVICE_DIR" ]] || die "Schema Service repo missing: $SCHEMA_SERVICE_DIR"
 }
 
@@ -218,6 +220,7 @@ check_all() {
     "engram-mcp-proxy 7438 http://127.0.0.1:7438/sse"
     "mlx-coder        8000 http://127.0.0.1:8000/v1/models"
     "mlx-thinking     8001 http://127.0.0.1:8001/v1/models"
+    "mlx-architect    8003 http://127.0.0.1:8003/v1/models"
     "llama-devstral   8004 http://127.0.0.1:8004/health"
     "devstral-proxy   8005 http://127.0.0.1:8005/v1/models"
     "mlx-hermes       8006 http://127.0.0.1:8006/v1/models"
@@ -316,7 +319,7 @@ t2_launch_one() {
 }
 
 t2_wait_all() {
-  local names=(mlx-coder mlx-thinking llama-devstral mlx-hermes)
+  local names=(mlx-coder mlx-thinking llama-devstral mlx-hermes mlx-architect)
   local pids=()
   for name in "${names[@]}"; do
     local v; v=$(_t2_get_status "$name")
@@ -360,8 +363,10 @@ t2_parallel_models() {
     "$LLAMA_BIN" -m "$DEVSTRAL_GGUF" --port 8004 --host 0.0.0.0 -ngl 99
   t2_launch_one "mlx-hermes"     8006 "http://127.0.0.1:8006/v1/models" "$LOG_DIR/mlx-hermes.log" \
     mlx_lm.server --model "$MLX_HERMES" --port 8006 --host 0.0.0.0
+  t2_launch_one "mlx-architect"  8003 "http://127.0.0.1:8003/v1/models" "$LOG_DIR/mlx-architect.log" \
+    mlx_lm.server --model "$MLX_ARCHITECT" --port 8003 --host 0.0.0.0
 
-  for name in mlx-coder mlx-thinking llama-devstral mlx-hermes; do
+  for name in mlx-coder mlx-thinking llama-devstral mlx-hermes mlx-architect; do
     [[ "$(_t2_get_status "$name")" == "stale" ]] && die "stale process on $name; resolve manually"
   done
 
@@ -373,6 +378,9 @@ t2_parallel_models() {
   done
   if [[ "$(_t2_get_status "mlx-hermes")" == "fail" ]]; then
     status_warn "mlx-hermes" 8006 "Schema Service will work; HermesAgent will not"
+  fi
+  if [[ "$(_t2_get_status "mlx-architect")" == "fail" ]]; then
+    status_warn "mlx-architect" 8003 "local-architect alias unavailable"
   fi
   [[ $critical_fail -eq 1 ]] && die "tier 2 critical model(s) failed — aborting"
 }
@@ -427,6 +435,7 @@ print_summary() {
     "engram-mcp-proxy 7438 http://127.0.0.1:7438/sse"
     "mlx-coder        8000 http://127.0.0.1:8000/v1/models"
     "mlx-thinking     8001 http://127.0.0.1:8001/v1/models"
+    "mlx-architect    8003 http://127.0.0.1:8003/v1/models"
     "llama-devstral   8004 http://127.0.0.1:8004/health"
     "devstral-proxy   8005 http://127.0.0.1:8005/v1/models"
     "mlx-hermes       8006 http://127.0.0.1:8006/v1/models"
