@@ -163,9 +163,72 @@ LiteLLM Proxy  :8002 ───────────────────�
 | Directory | Role |
 |-----------|------|
 | `hermes-docker/` | OpenCode agent in Docker — config, soul.md, launchers, RUNBOOK |
+| `schema-service/` | FastAPI that executes all BMAD and SDD phases via structured LLM |
 | `hermes-design-mcp/` | MCP server for UI/UX design knowledge base |
 | `langfuse-docker/` | Observability dashboard (traces, costs, evals) |
 | `litellm/` | LiteLLM proxy config + skill injector + launch script |
+| `bin/` | Stack management scripts (startup, proxies, Engram) |
+
+---
+
+## Schema Service
+
+`schema-service/` is the execution layer of the stack. Hermes orchestrates, but never generates SDD or BMAD content itself — it always delegates to Schema Service via `curl`.
+
+It is a FastAPI + [Instructor](https://github.com/jxnl/instructor) + Pydantic v2 API. Instructor forces local models to return structured, schema-validated JSON — no format hallucinations, no fragile parsing.
+
+```
+schema-service/
+├── app/
+│   ├── routes/
+│   │   ├── sdd.py       # /v1/sdd/* endpoints (explore, propose, spec, design, tasks, apply, verify)
+│   │   └── bmad.py      # /v1/bmad/* endpoints (analyze, prd, ux, architect, stories)
+│   ├── schemas/         # Pydantic input/output models per phase
+│   ├── prompts/         # system prompts per phase (.txt)
+│   └── registry.py      # model→alias→endpoint table (authoritative routing source)
+└── calibration/         # phase quality evaluation harness
+```
+
+Start:
+```bash
+cd schema-service
+pip install -e .
+uvicorn app.main:app --host 0.0.0.0 --port 8010
+```
+
+Or via `bin/agentic-up.sh`, which starts it automatically in the correct order.
+
+---
+
+## Engram — persistent memory
+
+Engram is the stack's memory server, developed by [Gentleman Programming](https://github.com/Gentleman-Programming/engram). It provides cross-session persistence via MCP tools — Hermes uses it to store SDD/BMAD artifacts, decisions, resolved bugs, and session summaries.
+
+**Install:**
+```bash
+brew install engram
+```
+
+**Access architecture:**
+
+Hermes runs in Docker and cannot call a stdio process directly. The stack uses `mcp-proxy` as a bridge:
+
+```
+Hermes (Docker)
+  │  MCP HTTP/SSE  →  :7438
+  ▼
+mcp-proxy (:7438)     ← bin/engram-mcp-proxy-run.sh (managed by launchd)
+  │  stdio
+  ▼
+engram mcp --tools=agent
+  │  REST
+  ▼
+Engram (:7437)        ← main Engram process
+```
+
+`bin/engram-mcp-proxy-run.sh` reads the active workspace from `~/.hermes-current-workspace` and starts `mcp-proxy` from that directory — so Engram automatically detects the correct project.
+
+**launchd** manages this automatically on macOS. The `com.pirito.litellm` and `com.pirito.engram-mcp-proxy` plists start these services at login.
 
 ---
 
@@ -209,12 +272,34 @@ bash install.sh
 
 # 2. Set up secrets (see above)
 
-# 3. Start services (order matters)
-cd langfuse-docker  && docker compose up -d          # observability first
-cd ../litellm       && bash bin/litellm-launch.sh    # LiteLLM proxy + skill injector
-cd ../hermes-docker && docker compose up -d          # Hermes agent
+# 3. Install Engram (if not already installed)
+brew install engram
 
-# 4. (Optional) Start Design MCP
+# 4. Start the full stack at once (recommended)
+bash bin/agentic-up.sh
+```
+
+`agentic-up.sh` starts services in order with health-gating between tiers:
+
+```
+T0  LiteLLM proxy     :8002   (launchd — starts automatically at login)
+T1  Engram            :7437
+T1b Engram MCP proxy  :7438
+T2  MLX models        :8000 :8001 :8006  (in parallel)
+    Devstral llama    :8004
+T3  Devstral proxy    :8005
+T4  Schema Service    :8010
+```
+
+Idempotent — already-running services are skipped. Diagnostic mode: `bash bin/agentic-up.sh --check`
+
+Then start Hermes:
+```bash
+cd hermes-docker && docker compose up -d
+```
+
+Optional — Design MCP:
+```bash
 cd hermes-design-mcp && bash run.sh
 ```
 
