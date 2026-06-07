@@ -143,11 +143,12 @@ Hermes (Docker)  ─────────────────────
 LiteLLM Proxy  :8002 ─────────────────────────────────────────────
   skill_injector.py → injects coding standards per request
   Routes by alias:
-    local-hermes    → Hermes 3 70B        :8006  (explore, verify, bmad-ux)
-    local-thinking  → DeepSeek R1 32B     :8001  (propose, design, bmad-analyze/prd/architect)
-    local-coder     → Qwen 2.5-Coder 32B  :8000  (spec, tasks, apply, bmad-stories)
-    local-devstral  → Devstral 24B        :8005  (fallback / tool calling)
-    claude-sonnet   → Anthropic API             (cloud fallback)
+    local-hermes      → Hermes 3 70B        :8006  (explore, verify, bmad-ux)
+    local-thinking    → DeepSeek R1 32B     :8001  (propose, design, bmad-analyze/prd/architect)
+    local-coder       → Qwen 2.5-Coder 32B  :8000  (spec, tasks, apply, bmad-stories)
+    local-architect   → Llama 3.3 70B       :8003  (available — no phase assigned yet)
+    local-devstral    → Devstral 24B        :8005  (fallback / tool calling)
+    claude-sonnet     → Anthropic API             (cloud fallback)
   │
   ├──► Langfuse  :3000  (traces, costs, evals — every request logged)
   │
@@ -293,7 +294,7 @@ bash bin/agentic-up.sh
 T0  LiteLLM proxy     :8002   (launchd — starts automatically at login)
 T1  Engram            :7437
 T1b Engram MCP proxy  :7438
-T2  MLX models        :8000 :8001 :8006  (in parallel)
+T2  MLX models        :8000 :8001 :8003 :8006  (in parallel)
     Devstral llama    :8004
 T3  Devstral proxy    :8005
 T4  Schema Service    :8010

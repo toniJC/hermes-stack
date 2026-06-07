@@ -108,6 +108,17 @@ Tamaño aproximado: **40 GB**
 
 ---
 
+### Llama 3.3 70B (alias: `local-architect` — disponible, sin fase asignada aún)
+
+```bash
+huggingface-cli download mlx-community/Llama-3.3-70B-Instruct-4bit \
+  --local-dir ~/models/llama3.3-70b-mlx
+```
+
+Tamaño aproximado: **40 GB**
+
+---
+
 ### Devstral Small 24B GGUF (alias: `local-devstral` — fallback, tool calling)
 
 ```bash
@@ -130,6 +141,7 @@ Al terminar, `~/models/` debe tener esta estructura:
 ├── qwen2.5-coder-32b-mlx/        # Qwen 2.5-Coder 32B (MLX)
 ├── deepseek-r1-32b-mlx/          # DeepSeek R1 32B (MLX)
 ├── hermes3-70b-mlx/              # Hermes 3 70B (MLX)
+├── llama3.3-70b-mlx/             # Llama 3.3 70B (MLX)
 └── devstral-small-2505-gguf/
     └── Devstral-Small-2505-Q4_K_M.gguf
 ```
@@ -158,6 +170,9 @@ mlx_lm.server --model ~/models/deepseek-r1-32b-mlx --port 8001 --host 0.0.0.0 &
 
 # Hermes 3 70B — puerto 8006 (debe escuchar en 0.0.0.0 para ser accesible desde Docker)
 mlx_lm.server --model ~/models/hermes3-70b-mlx --port 8006 --host 0.0.0.0 &
+
+# Llama 3.3 70B — puerto 8003
+mlx_lm.server --model ~/models/llama3.3-70b-mlx --port 8003 --host 0.0.0.0 &
 
 # Devstral GGUF — puerto 8004
 llama-server \

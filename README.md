@@ -143,11 +143,12 @@ Hermes (Docker)  ─────────────────────
 Proxy LiteLLM  :8002 ─────────────────────────────────────────────
   skill_injector.py → inyecta estándares de código por petición
   Enruta por alias:
-    local-hermes    → Hermes 3 70B        :8006  (explore, verify, bmad-ux)
-    local-thinking  → DeepSeek R1 32B     :8001  (propose, design, bmad-analyze/prd/architect)
-    local-coder     → Qwen 2.5-Coder 32B  :8000  (spec, tasks, apply, bmad-stories)
-    local-devstral  → Devstral 24B        :8005  (fallback / tool calling)
-    claude-sonnet   → API de Anthropic          (fallback en la nube)
+    local-hermes      → Hermes 3 70B        :8006  (explore, verify, bmad-ux)
+    local-thinking    → DeepSeek R1 32B     :8001  (propose, design, bmad-analyze/prd/architect)
+    local-coder       → Qwen 2.5-Coder 32B  :8000  (spec, tasks, apply, bmad-stories)
+    local-architect   → Llama 3.3 70B       :8003  (disponible — sin fase asignada aún)
+    local-devstral    → Devstral 24B        :8005  (fallback / tool calling)
+    claude-sonnet     → API de Anthropic          (fallback en la nube)
   │
   ├──► Langfuse  :3000  (trazas, costes, evals — cada petición registrada)
   │
@@ -293,7 +294,7 @@ bash bin/agentic-up.sh
 T0  LiteLLM proxy     :8002   (launchd — arranca automáticamente al iniciar sesión)
 T1  Engram            :7437
 T1b Engram MCP proxy  :7438
-T2  Modelos MLX       :8000 :8001 :8006  (en paralelo)
+T2  Modelos MLX       :8000 :8001 :8003 :8006  (en paralelo)
     Devstral llama    :8004
 T3  Devstral proxy    :8005
 T4  Schema Service    :8010
