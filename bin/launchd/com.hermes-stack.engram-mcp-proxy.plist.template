@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.hermes-stack.engram-mcp-proxy</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>__HOME__/bin/engram-mcp-proxy-run.sh</string>
+    </array>
+
+    <!-- Restart automatically if the process exits for any reason -->
+    <key>KeepAlive</key>
+    <true/>
+
+    <!-- Do NOT auto-start on login — agentic-up.sh bootstraps this -->
+    <key>RunAtLoad</key>
+    <false/>
+
+    <!-- Minimum 3s between restarts to avoid tight crash loops -->
+    <key>ThrottleInterval</key>
+    <integer>3</integer>
+
+    <key>StandardOutPath</key>
+    <string>__HOME__/Library/Logs/agentic-stack/engram-mcp-proxy.log</string>
+    <key>StandardErrorPath</key>
+    <string>__HOME__/Library/Logs/agentic-stack/engram-mcp-proxy.log</string>
+</dict>
+</plist>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.hermes-stack.hermes-design-mcp</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>__HOME__/projects/hermes-stack/hermes-design-mcp/run.sh</string>
+    </array>
+
+    <!-- Auto-start at login — no workspace dependency -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Restart automatically if the process exits -->
+    <key>KeepAlive</key>
+    <true/>
+
+    <!-- Minimum 5s between restarts to avoid tight crash loops -->
+    <key>ThrottleInterval</key>
+    <integer>5</integer>
+
+    <key>StandardOutPath</key>
+    <string>__HOME__/Library/Logs/agentic-stack/hermes-design-mcp.log</string>
+    <key>StandardErrorPath</key>
+    <string>__HOME__/Library/Logs/agentic-stack/hermes-design-mcp.log</string>
+</dict>
+</plist>
