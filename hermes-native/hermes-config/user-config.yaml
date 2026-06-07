@@ -1,0 +1,13 @@
+model:
+  provider: litellm-minimax
+  model: minimax-orchestrator
+
+custom_providers:
+  - name: litellm-minimax
+    base_url: http://host.docker.internal:8002/v1
+    api_key: dummy
+    model: minimax-orchestrator
+
+mcp_servers:
+  engram:
+    url: http://host.docker.internal:7438/mcp

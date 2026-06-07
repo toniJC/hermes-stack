@@ -1,0 +1,107 @@
+model_list:
+  # ── Claude API ──────────────────────────────────────────────
+  - model_name: opus
+    litellm_params:
+      model: anthropic/claude-opus-4-5
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+  - model_name: sonnet
+    litellm_params:
+      model: anthropic/claude-sonnet-4-5
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+  - model_name: haiku
+    litellm_params:
+      model: anthropic/claude-haiku-4-5
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+  # ── MiniMax M2.7 via Together.ai ────────────────────────────
+  - model_name: minimax-orchestrator
+    litellm_params:
+      model: openai/MiniMaxAI/MiniMax-M2.7
+      api_base: https://api.together.xyz/v1
+      api_key: os.environ/TOGETHER_API_KEY
+
+  # ── Local models (mlx-server or llama.cpp) ─────────────────
+  # Set MODEL_DIR in ~/.config/litellm/env to your models directory.
+  # Default assumes ~/models/. Adjust api_base ports to match your setup.
+  - model_name: claude-local-coder
+    litellm_params:
+      model: openai/qwen2.5-coder-32b-mlx
+      api_base: http://localhost:8000/v1
+      api_key: dummy
+
+  - model_name: claude-local-thinking
+    litellm_params:
+      model: openai/deepseek-r1-32b-mlx
+      api_base: http://localhost:8001/v1
+      api_key: dummy
+
+  - model_name: local-thinking
+    litellm_params:
+      model: openai/deepseek-r1-32b-mlx
+      api_base: http://localhost:8001/v1
+      api_key: dummy
+    model_info:
+      max_input_tokens: 131072
+      max_output_tokens: 4096
+
+  - model_name: local-coder
+    litellm_params:
+      model: openai/qwen2.5-coder-32b-mlx
+      api_base: http://localhost:8000/v1
+      api_key: dummy
+
+  - model_name: local-architect
+    litellm_params:
+      model: openai/llama3.3-70b-mlx
+      api_base: http://localhost:8003/v1
+      api_key: dummy
+
+  - model_name: local-hermes
+    litellm_params:
+      model: openai/hermes3-70b-mlx
+      api_base: http://localhost:8006/v1
+      api_key: dummy
+    model_info:
+      max_input_tokens: 131072
+      max_output_tokens: 4096
+
+  - model_name: hermes-orchestrator
+    litellm_params:
+      model: openai/hermes3-70b-mlx
+      api_base: http://localhost:8006/v1
+      api_key: dummy
+    model_info:
+      max_input_tokens: 131072
+      max_output_tokens: 4096
+
+  - model_name: local-devstral
+    litellm_params:
+      model: openai/devstral
+      api_base: http://localhost:8005/v1
+      api_key: dummy
+      max_tokens: 32768
+      input_cost_per_token: 0
+      output_cost_per_token: 0
+    model_info:
+      max_tokens: 131072
+      max_input_tokens: 131072
+      max_output_tokens: 4096
+
+litellm_settings:
+  drop_params: true
+  success_callback: ["langfuse"]
+  failure_callback: ["langfuse"]
+  callbacks: ["skill_injector.skill_injector_instance"]
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+
+router_settings:
+  fallbacks:
+    - local-thinking: [local-devstral, local-coder]
+    - local-coder: [local-devstral]
+    - hermes-orchestrator: [minimax-orchestrator]
+  num_retries: 2
+  retry_after: 5

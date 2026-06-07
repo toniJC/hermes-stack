@@ -1,0 +1,67 @@
+# ~/projects/hermes-docker/docker-compose.yml
+# Variables come from ./.env (see .env.example).
+
+services:
+  hermes:
+    # Pinned by digest (D1). Override via HERMES_IMAGE in .env to use Dockerfile.fallback.
+    image: ${HERMES_IMAGE}
+    container_name: hermes-agent
+    hostname: hermes
+    init: true
+    restart: "no"
+    stop_grace_period: 30s
+    user: "1000:1000"
+
+    # --- Hardening ---
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    pids_limit: 512
+    mem_limit: 4g
+    memswap_limit: 4g
+    cpus: 4.0
+
+    # --- Networking ---
+    # host.docker.internal must resolve to the Docker Desktop gateway so the
+    # container can reach host services (MLX :8006, Engram :7437).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "9119:9119"
+
+    # --- Filesystem ---
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=512m
+      - /run:rw,noexec,nosuid,size=64m
+    volumes:
+      - hermes-data:/opt/data:rw
+      - hermes-tui-dist:/opt/hermes/ui-tui/dist:rw
+      - ./hermes-config/soul.md:/opt/data/SOUL.md:ro
+      - ./hermes-config:/hermes-config:ro
+      - ${WORKSPACE_PATH:-./projects/miapp}:/workspace:rw
+
+    # --- Runtime env (forwarded into the process) ---
+    environment:
+      HERMES_CONFIG: /hermes-config/config.yaml
+      HERMES_DATA_DIR: /opt/data
+      HERMES_WEB_DIST: /opt/data/web_dist
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-dummy}
+      LITELLM_API_KEY: ${LITELLM_API_KEY:-hermes-local-dev}
+      MINIMAX_API_KEY: ${MINIMAX_API_KEY:-}
+      TZ: ${TZ:-Europe/Madrid}
+      PYTHONUNBUFFERED: "1"
+
+    # Interactive: hermes is a CLI tool, not a daemon.
+    # Launch sessions with: docker compose run --rm hermes hermes chat
+    stdin_open: true
+    tty: true
+
+volumes:
+  hermes-data:
+    name: hermes-data
+    driver: local
+  hermes-tui-dist:
+    name: hermes-tui-dist
+    driver: local

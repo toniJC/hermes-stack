@@ -1,0 +1,29 @@
+# Used only if nousresearch/hermes-agent has no arm64 manifest.
+# Activate by setting HERMES_IMAGE=hermes-agent-local in .env and running:
+#   docker build -f Dockerfile.fallback -t hermes-agent-local:v2026.5.16 .
+FROM python:3.11-slim-bookworm
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    NODE_MAJOR=22
+
+# System deps required by HermesAgent (per official image manifest)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates curl gnupg git ripgrep ffmpeg build-essential \
+    && curl -fsSL https://deb.nodesource.com/setup_${NODE_MAJOR}.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Non-root user matching compose `user: 1000:1000`
+RUN groupadd -g 1000 hermes && useradd -m -u 1000 -g 1000 -s /bin/bash hermes
+
+# Pin to same release as the official image
+RUN pip install --no-cache-dir hermes-agent==2026.5.16
+
+USER hermes
+WORKDIR /opt/data
+RUN hermes postinstall || true
+
+ENTRYPOINT ["hermes"]
+CMD ["serve"]

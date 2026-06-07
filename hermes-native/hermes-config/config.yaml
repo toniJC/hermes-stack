@@ -1,0 +1,37 @@
+# ~/projects/hermes-native/hermes-config/config.yaml
+# Mounted read-only at /hermes-config/config.yaml inside container.
+
+version: 1
+
+model:
+  provider: litellm-minimax  # Custom provider → LiteLLM :8002 → MiniMax M2.7 via Together.ai
+  model: minimax-orchestrator
+  temperature: 0.7
+  max_tokens: 8192
+  timeout: 300
+
+# Terminal/sandbox: the container IS the sandbox, so the agent runs commands
+# directly inside it. No nested sandboxing, no Docker-in-Docker.
+terminal:
+  backend: local
+  working_dir: /workspace
+  shell: /bin/bash
+
+# Persistent state — all writes land in the hermes-native-data named volume
+storage:
+  data_dir: /opt/data
+  memories_dir: /opt/data/memories
+  skills_dir: /opt/data/skills
+  logs_dir: /opt/data/logs
+
+# Workspace the agent operates on (bind-mounted from host)
+workspace:
+  path: /workspace
+  read_only: false
+
+mcp:
+  config_path: /hermes-config/mcp_servers.yaml
+
+logging:
+  level: info
+  format: json
