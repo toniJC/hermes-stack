@@ -226,9 +226,68 @@ Para comprobaciones de salud, resolución de problemas y procedimientos de actua
 
 ## soul.md
 
-`hermes-docker/hermes-config/soul.md` es la persona e instrucciones operativas de Hermes — el equivalente de `CLAUDE.md` en Claude Code, pero para este agente. Se monta de solo lectura en el contenedor al arrancar.
+`hermes-docker/hermes-config/soul.md` es la persona e instrucciones operativas de Hermes — el equivalente de `CLAUDE.md` en Claude Code, pero para este agente. Se monta de solo lectura en el contenedor al arrancar. Los cambios se aplican en el próximo `docker compose up`.
 
-Define el contrato de orquestación: Hermes coordina, Schema Service ejecuta las fases, Engram persiste todo. Edítalo para cambiar cómo razona el agente, qué prioriza o cómo enruta el trabajo. Los cambios se aplican en el próximo `docker compose up`.
+Son 20 secciones que definen contratos explícitos. Los más importantes:
+
+### El principio fundamental: cliente delgado
+
+Hermes **coordina**, nunca implementa. Toda la lógica de ejecución vive en Schema Service. Toda la persistencia vive en Engram. Hermes es el director de orquesta — nunca toca un instrumento.
+
+```
+NUNCA generes contenido SDD tú mismo.
+SIEMPRE llama a Schema Service via curl.
+NUNCA uses curl para llegar a Engram — solo MCP.
+```
+
+### Primera acción: detección de proyecto
+
+Lo primero que hace Hermes al arrancar:
+
+```bash
+echo $HERMES_PROJECT
+```
+
+Este valor se pasa explícitamente en **todas** las llamadas MCP a Engram. Sin él, la memoria no sabe a qué proyecto pertenece el artefacto.
+
+### Protocolo Engram (memoria)
+
+Guardado proactivo obligatorio — sin esperar a que se lo pidan — tras cualquiera de estos eventos:
+- Resultado de fase recibido y validado
+- Decisión arquitectónica tomada
+- Bug o error resuelto
+- Descubrimiento no obvio sobre el codebase
+- Fin de sesión (`mem_session_summary`)
+
+Recuperación siempre en dos pasos — los resultados de búsqueda son previsualizaciones truncadas a 300 caracteres y **nunca** pueden usarse como fuente:
+
+```
+1. mem_search(query: "sdd/{cambio}/{fase}", project: "$HERMES_PROJECT") → obtener ID
+2. mem_get_observation(id: <ID>) → contenido completo
+```
+
+### Disciplina de fase
+
+Los modelos locales tienden a mezclar responsabilidades entre fases. El soul.md lo previene con una regla simple: **una fase por turno, nombrada explícitamente al inicio**.
+
+| Fase | Tu trabajo en este turno | No harás |
+|------|--------------------------|----------|
+| explore | Leer ficheros, mapear estructura | Modificar o proponer soluciones |
+| propose | Problema, alcance, enfoque | Escribir spec, diseño o código |
+| spec | QUÉ (requisitos, criterios) | Decidir CÓMO ni arquitectura |
+| design | CÓMO (arquitectura, tradeoffs) | Listas de tareas o implementar |
+| tasks | Desglose ordenado del diseño | Implementarlas |
+| apply | Implementar el lote actual | Rediseñar o ampliar alcance |
+| verify | Comparar implementación con spec | Corregir código inline |
+| archive | Cerrar y persistir estado final | Reabrir decisiones |
+
+### Handoff BMAD → SDD
+
+Cuando BMAD completa `stories`, Hermes recupera los tres artefactos clave de Engram (`prd`, `architect`, `stories`), los ensambla con `jq` y llama a `POST /v1/sdd/propose` — arrancando el ciclo SDD con contexto de negocio completo ya incorporado.
+
+### Cierre de sesión
+
+Antes de terminar cualquier sesión, `mem_session_summary` es **obligatorio**. Si se omite, la siguiente sesión empieza a ciegas.
 
 ---
 
