@@ -232,7 +232,7 @@ O via `bin/agentic-up.sh`, que lo levanta automáticamente en el orden correcto.
 
 ## Engram — memoria persistente
 
-Engram es el servidor de memoria del stack. Proporciona persistencia entre sesiones via herramientas MCP — Hermes lo usa para guardar artefactos SDD/BMAD, decisiones, bugs resueltos y resúmenes de sesión.
+Engram es el servidor de memoria del stack, desarrollado por [Gentleman Programming](https://github.com/Gentleman-Programming/engram). Proporciona persistencia entre sesiones via herramientas MCP — Hermes lo usa para guardar artefactos SDD/BMAD, decisiones, bugs resueltos y resúmenes de sesión.
 
 **Instalación:**
 ```bash
