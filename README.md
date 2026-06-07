@@ -1,238 +1,240 @@
+🇪🇸 Español | [🇬🇧 English](README.en.md)
+
 # Hermes Stack
 
-Most people run local AI models in chat mode. This stack runs them as a **complete engineering ecosystem** — from raw idea to verified, artifact-producing code — with each phase routed to the model best suited for that cognitive task, all observable, all persisted to memory across sessions.
+La mayoría de la gente ejecuta modelos de IA locales en modo chat. Este stack los ejecuta como un **ecosistema de ingeniería completo** — desde una idea en bruto hasta código verificado y respaldado por artefactos — con cada fase enrutada al modelo más adecuado para esa tarea cognitiva, todo observable y persistido en memoria entre sesiones.
 
-This is not a chatbot setup. It's a local AI engineering environment.
+Esto no es un setup de chatbot. Es un entorno de ingeniería de IA local.
 
 ---
 
-## The full pipeline
+## El pipeline completo
 
 ```
 Idea
  │
- ▼  BMAD Planning Layer
- ├─ analyze    → business context, constraints, risks
- ├─ prd        → product requirements document
- ├─ ux         → UI/UX design brief (optional, design-focused phases)
- ├─ architect  → technical architecture decisions
- └─ stories    → structured user stories
+ ▼  Capa de planificación BMAD
+ ├─ analyze    → contexto de negocio, restricciones, riesgos
+ ├─ prd        → documento de requisitos de producto
+ ├─ ux         → brief de diseño UI/UX (opcional, fases orientadas a diseño)
+ ├─ architect  → decisiones de arquitectura técnica
+ └─ stories    → historias de usuario estructuradas
        │
-       ▼  SDD Implementation Layer
-       ├─ explore   → codebase investigation, approach comparison
-       ├─ propose   → formal change proposal with scope and tradeoffs
-       ├─ spec      → requirements and acceptance scenarios
-       ├─ design    → architecture decisions and component breakdown
-       ├─ tasks     → ordered, dependency-aware implementation checklist
-       ├─ apply     → implementation with work-unit commits
-       └─ verify    → validation against spec, CRITICAL / WARNING report
+       ▼  Capa de implementación SDD
+       ├─ explore   → investigación del codebase, comparación de enfoques
+       ├─ propose   → propuesta formal de cambio con alcance y tradeoffs
+       ├─ spec      → requisitos y escenarios de aceptación
+       ├─ design    → decisiones de arquitectura y desglose de componentes
+       ├─ tasks     → checklist de implementación ordenado por dependencias
+       ├─ apply     → implementación con commits por unidad de trabajo
+       └─ verify    → validación contra la spec, informe CRITICAL / WARNING
              │
              ▼
-          Verified, artifact-backed code
-          persisted in Engram for future sessions
+          Código verificado y respaldado por artefactos
+          persistido en Engram para sesiones futuras
 ```
 
-Most tools give you a coding assistant. This gives you the full engineering process — structured, reproducible, model-aware at every step.
+La mayoría de herramientas te dan un asistente de código. Esto te da el proceso de ingeniería completo — estructurado, reproducible y consciente del modelo en cada paso.
 
 ---
 
-## What is Hermes?
+## ¿Qué es Hermes?
 
-Hermes is an [OpenCode](https://github.com/opencode-ai/opencode) agent configured as an SDD orchestrator. OpenCode is an open-source terminal AI coding assistant — think Claude Code, but self-hostable and model-agnostic.
+Hermes es un agente [OpenCode](https://github.com/opencode-ai/opencode) configurado como orquestador SDD. OpenCode es un asistente de código IA de terminal de código abierto — similar a Claude Code, pero auto-hospedable e independiente del modelo.
 
-Out of the box, OpenCode is a capable coding agent. Hermes layers on top of it:
+Por defecto, OpenCode es un agente de código capaz. Hermes añade sobre él:
 
-- A **soul** (`soul.md`) that defines its role: thin orchestrator, coordinates phases, never implements inline
-- A **LiteLLM proxy** that routes each phase to the optimal local or cloud model
-- A **dual memory system** for both session context and cross-session persistence
-- A **skill injector** that automatically loads coding standards per request
-- A **Design MCP** for UI/UX knowledge without external calls
-- A **full BMAD + SDD workflow** implemented in Schema Service
+- Un **alma** (`soul.md`) que define su rol: orquestador delgado, coordina fases, nunca implementa inline
+- Un **proxy LiteLLM** que enruta cada fase al modelo local o en la nube más óptimo
+- Un **sistema de memoria dual** para contexto de sesión y persistencia entre sesiones
+- Un **inyector de skills** que carga automáticamente los estándares de código por petición
+- Un **Design MCP** para conocimiento UI/UX sin llamadas externas
+- Un **flujo BMAD + SDD completo** implementado en Schema Service
 
 ---
 
-## Model-per-phase routing
+## Enrutamiento por modelo y fase
 
-Every phase has a different cognitive profile. Reasoning models excel at tradeoffs and architecture; coding models are faster and more precise at structured output and implementation; broad-context models handle exploration and qualitative judgment.
+Cada fase tiene un perfil cognitivo distinto. Los modelos de razonamiento destacan en tradeoffs y arquitectura; los modelos de código son más rápidos y precisos en output estructurado e implementación; los modelos de contexto amplio gestionan la exploración y el juicio cualitativo.
 
 ```
-BMAD analyze / prd / architect   →  DeepSeek R1 32B      (deep reasoning)
-BMAD ux                          →  Hermes 3 70B          (design + broad context)
-BMAD stories                     →  Qwen 2.5-Coder 32B   (structured output)
+BMAD analyze / prd / architect   →  DeepSeek R1 32B      (razonamiento profundo)
+BMAD ux                          →  Hermes 3 70B          (diseño + contexto amplio)
+BMAD stories                     →  Qwen 2.5-Coder 32B   (output estructurado)
 
-SDD explore / verify             →  Hermes 3 70B          (qualitative judgment)
-SDD propose / design             →  DeepSeek R1 32B       (architectural decisions)
-SDD spec / tasks / apply         →  Qwen 2.5-Coder 32B   (precision + code gen)
+SDD explore / verify             →  Hermes 3 70B          (juicio cualitativo)
+SDD propose / design             →  DeepSeek R1 32B       (decisiones arquitectónicas)
+SDD spec / tasks / apply         →  Qwen 2.5-Coder 32B   (precisión + generación de código)
 ```
 
-All routing is configured via aliases in `litellm/litellm_config.yaml`. Swap a model, change a port, or point an alias to Anthropic — zero changes to the agent.
+Todo el enrutamiento se configura mediante alias en `litellm/litellm_config.yaml`. Cambia un modelo, un puerto, o apunta un alias a Anthropic — sin ningún cambio en el agente.
 
 ---
 
-## Dual memory system
+## Sistema de memoria dual
 
-Hermes has two memory layers that work together:
+Hermes tiene dos capas de memoria que trabajan juntas:
 
-### Session memory (OpenCode native)
-Within a session, full conversation context — tool calls, file reads, decisions made. Standard for any AI coding agent.
+### Memoria de sesión (OpenCode nativo)
+Dentro de una sesión, contexto completo de conversación: llamadas a herramientas, lecturas de ficheros, decisiones tomadas. Estándar en cualquier agente de código IA.
 
-### Cross-session memory (Engram)
-Engram is a persistent memory MCP server on `:7437`. Hermes writes to it via MCP tools and reads from it at the start of every session. What gets persisted:
+### Memoria entre sesiones (Engram)
+Engram es un servidor MCP de memoria persistente en `:7437`. Hermes escribe en él mediante herramientas MCP y lo lee al inicio de cada sesión. Qué se persiste:
 
-- **SDD + BMAD artifacts** — every phase output stored by topic key, retrievable in future sessions
-- **Decisions** — architecture choices, tradeoffs considered, direction taken
-- **Bug fixes** — root cause + fix, so the agent never repeats the same mistake
-- **Discoveries** — non-obvious findings about the codebase, gotchas, edge cases
-- **Session summaries** — structured end-of-session saves so the next session starts informed
+- **Artefactos BMAD + SDD** — output de cada fase almacenado por topic key, recuperable en sesiones futuras
+- **Decisiones** — elecciones arquitectónicas, tradeoffs considerados, dirección tomada
+- **Bugs resueltos** — causa raíz + solución, para que el agente no repita los mismos errores
+- **Descubrimientos** — hallazgos no obvios sobre el codebase, gotchas, casos edge
+- **Resúmenes de sesión** — guardados al final de cada sesión para que la siguiente empiece informada
 
-This is what separates agentic workflows from chat. Chat forgets. Hermes doesn't.
+Esto es lo que separa los flujos agénticos del chat. El chat olvida. Hermes no.
 
 ---
 
-## Automatic skill injection
+## Inyección automática de skills
 
-Before every LLM request, `skill_injector.py` (a LiteLLM `CustomLogger`) scans `~/.claude/skills/` and prepends the relevant coding standards to the system message — automatically, without any instruction from the agent.
+Antes de cada petición LLM, `skill_injector.py` (un `CustomLogger` de LiteLLM) escanea `~/.claude/skills/` y antepone los estándares de código relevantes al mensaje de sistema — automáticamente, sin ninguna instrucción del agente.
 
-The skills library currently covers:
+La biblioteca de skills cubre actualmente:
 
-| Domain | Skills |
-|--------|--------|
-| **Frontend** | React 19, React Enterprise SPA, Next.js 15, Angular (architecture, core, forms, performance), Tailwind 4, Zustand 5, Zod 4, AI SDK 5 |
+| Dominio | Skills |
+|---------|--------|
+| **Frontend** | React 19, React Enterprise SPA, Next.js 15, Angular (arquitectura, core, formularios, rendimiento), Tailwind 4, Zustand 5, Zod 4, AI SDK 5 |
 | **UI/UX** | frontend-design, web-designer-expert |
 | **Backend** | Django DRF, .NET backend, .NET MCP server, Go testing, pytest |
-| **Language** | TypeScript, Playwright |
-| **Dev workflow** | SDD (9 phases), branch-pr, chained-pr, github-pr, work-unit-commits, Jira (epic, task), issue-creation |
-| **Code quality** | comment-writer, cognitive-doc-design, project-review, lessons-learnt, judgment-day |
+| **Lenguaje** | TypeScript, Playwright |
+| **Flujo de trabajo** | SDD (9 fases), branch-pr, chained-pr, github-pr, work-unit-commits, Jira (epic, tarea), issue-creation |
+| **Calidad de código** | comment-writer, cognitive-doc-design, project-review, lessons-learnt, judgment-day |
 
-Every model that sits behind LiteLLM — local or cloud — benefits from this injection automatically.
-
----
-
-## UI/UX knowledge base
-
-`hermes-design-mcp` is a FastMCP SSE server backed by a BM25 search engine over 14 curated CSV datasets covering design systems, color palettes, typography, icons, UX guidelines, component patterns, and framework-specific guidance.
-
-Hermes calls it before answering any design question or generating UI. Three tools:
-
-- `design_search(query, domain?)` — targeted lookup (color, typography, icons, UX, landing, charts...)
-- `design_search_stack(query, stack)` — framework-specific guidance (React, Next.js, Tailwind, shadcn, SwiftUI...)
-- `design_system(query, project_name?)` — generate a full design system for a new project
-
-No external calls. No design tokens invented from training data.
+Todos los modelos detrás de LiteLLM — locales o en la nube — se benefician de esta inyección automáticamente.
 
 ---
 
-## Architecture
+## Base de conocimiento UI/UX
+
+`hermes-design-mcp` es un servidor FastMCP SSE respaldado por un motor de búsqueda BM25 sobre 14 datasets CSV curados que cubren sistemas de diseño, paletas de color, tipografía, iconos, guías UX, patrones de componentes y guía específica por framework.
+
+Hermes lo consulta antes de responder cualquier pregunta de diseño o generar UI. Tres herramientas:
+
+- `design_search(query, domain?)` — búsqueda concreta (color, tipografía, iconos, UX, landing, gráficos...)
+- `design_search_stack(query, stack)` — guía específica por framework (React, Next.js, Tailwind, shadcn, SwiftUI...)
+- `design_system(query, project_name?)` — genera un sistema de diseño completo para un proyecto nuevo
+
+Sin llamadas externas. Sin tokens de diseño inventados a partir de datos de entrenamiento.
+
+---
+
+## Arquitectura
 
 ```
-You
- │  macOS launcher (Spotlight → HermesAgent.app)
+Tú
+ │  Launcher macOS (Spotlight → HermesAgent.app)
  ▼
 Hermes (Docker)  ─────────────────────────────────────────────────
-  OpenCode agent (BMAD + SDD orchestrator)    port 9119 (web TUI)
-  soul.md → persona + orchestration rules (bind-mounted :ro)
+  Agente OpenCode (orquestador BMAD + SDD)    puerto 9119 (web TUI)
+  soul.md → persona + reglas de orquestación (montado :ro)
   │
-  ├──► Schema Service  :8010  (FastAPI — executes BMAD + SDD phases)
+  ├──► Schema Service  :8010  (FastAPI — ejecuta fases BMAD + SDD)
   │      /v1/bmad/*  — analyze, prd, ux, architect, stories
   │      /v1/sdd/*   — explore, propose, spec, design, tasks, apply, verify
   │
-  │  All LLM calls → LiteLLM proxy
+  │  Todas las llamadas LLM → proxy LiteLLM
   ▼
-LiteLLM Proxy  :8002 ─────────────────────────────────────────────
-  skill_injector.py → injects coding standards per request
-  Routes by alias:
+Proxy LiteLLM  :8002 ─────────────────────────────────────────────
+  skill_injector.py → inyecta estándares de código por petición
+  Enruta por alias:
     local-hermes    → Hermes 3 70B        :8006  (explore, verify, bmad-ux)
     local-thinking  → DeepSeek R1 32B     :8001  (propose, design, bmad-analyze/prd/architect)
     local-coder     → Qwen 2.5-Coder 32B  :8000  (spec, tasks, apply, bmad-stories)
     local-devstral  → Devstral 24B        :8005  (fallback / tool calling)
-    claude-sonnet   → Anthropic API             (cloud fallback)
+    claude-sonnet   → API de Anthropic          (fallback en la nube)
   │
-  ├──► Langfuse  :3000  (traces, costs, evals — every request logged)
+  ├──► Langfuse  :3000  (trazas, costes, evals — cada petición registrada)
   │
-  ├──► Engram  :7437  (cross-session memory — MCP via proxy :7438)
+  ├──► Engram  :7437  (memoria entre sesiones — MCP via proxy :7438)
   │
-  └──► hermes-design-mcp  :8012  (UI/UX knowledge base — 14 datasets)
+  └──► hermes-design-mcp  :8012  (base de conocimiento UI/UX — 14 datasets)
 ```
 
 ---
 
-## Components
+## Componentes
 
-| Directory | Role |
-|-----------|------|
-| `hermes-docker/` | OpenCode agent in Docker — config, soul.md, launchers, RUNBOOK |
-| `hermes-design-mcp/` | MCP server for UI/UX design knowledge base |
-| `langfuse-docker/` | Observability dashboard (traces, costs, evals) |
-| `litellm/` | LiteLLM proxy config + skill injector + launch script |
+| Directorio | Función |
+|------------|---------|
+| `hermes-docker/` | Agente OpenCode en Docker — config, soul.md, launchers, RUNBOOK |
+| `hermes-design-mcp/` | Servidor MCP para base de conocimiento UI/UX |
+| `langfuse-docker/` | Dashboard de observabilidad (trazas, costes, evals) |
+| `litellm/` | Config del proxy LiteLLM + inyector de skills + script de arranque |
 
 ---
 
-## Prerequisites
+## Requisitos previos
 
-- **Docker Desktop** — for Hermes and Langfuse
-- **Python 3.11+** — for LiteLLM proxy and Design MCP server
+- **Docker Desktop** — para Hermes y Langfuse
+- **Python 3.11+** — para el proxy LiteLLM y el servidor Design MCP
 - **LiteLLM** — `pip install litellm`
-- **API keys** — Anthropic (required for cloud fallback), local MLX models (optional)
+- **API keys** — Anthropic (necesaria para fallback en la nube), modelos MLX locales (opcional)
 
-Local models run via `mlx_lm.server` on Apple Silicon. If you only have Anthropic keys, point the aliases to `claude-sonnet` / `claude-haiku` in `litellm_config.yaml` — the rest of the stack works identically.
+Los modelos locales se ejecutan con `mlx_lm.server` en Apple Silicon. Si solo tienes claves de Anthropic, apunta los alias a `claude-sonnet` / `claude-haiku` en `litellm_config.yaml` — el resto del stack funciona de forma idéntica.
 
 ---
 
-## Secrets setup
+## Configuración de secretos
 
-Secrets live outside the repo in `~/.config/litellm/env`, sourced at runtime:
+Los secretos viven fuera del repositorio en `~/.config/litellm/env`, cargados en tiempo de ejecución:
 
 ```bash
 mkdir -p ~/.config/litellm
 cat > ~/.config/litellm/env <<EOF
 ANTHROPIC_API_KEY=sk-ant-...
-TOGETHER_API_KEY=...           # optional
+TOGETHER_API_KEY=...           # opcional
 LITELLM_MASTER_KEY=hermes-local-dev
 EOF
 ```
 
-`litellm/bin/litellm-launch.sh` sources this file automatically. Never commit it.
+`litellm/bin/litellm-launch.sh` carga este fichero automáticamente. Nunca lo incluyas en el repositorio.
 
-For Docker Compose variables copy `.env.example` → `.env`. `bash install.sh` does this for you.
+Para las variables de Docker Compose, copia `.env.example` → `.env`. `bash install.sh` lo hace automáticamente.
 
 ---
 
-## Quick start
+## Inicio rápido
 
 ```bash
-# 1. Clone and bootstrap
+# 1. Clonar y configurar
 git clone git@github.com:toniJC/hermes-stack.git
 cd hermes-stack
 bash install.sh
 
-# 2. Set up secrets (see above)
+# 2. Configurar secretos (ver sección anterior)
 
-# 3. Start services (order matters)
-cd langfuse-docker  && docker compose up -d          # observability first
-cd ../litellm       && bash bin/litellm-launch.sh    # LiteLLM proxy + skill injector
-cd ../hermes-docker && docker compose up -d          # Hermes agent
+# 3. Arrancar servicios (el orden importa)
+cd langfuse-docker  && docker compose up -d          # observabilidad primero
+cd ../litellm       && bash bin/litellm-launch.sh    # proxy LiteLLM + inyector de skills
+cd ../hermes-docker && docker compose up -d          # agente Hermes
 
-# 4. (Optional) Start Design MCP
+# 4. (Opcional) Arrancar Design MCP
 cd hermes-design-mcp && bash run.sh
 ```
 
-Hermes web UI → http://localhost:9119
+Interfaz web de Hermes → http://localhost:9119
 
-For health checks, troubleshooting, and update procedures → [hermes-docker/RUNBOOK.md](hermes-docker/RUNBOOK.md)
+Para comprobaciones de salud, resolución de problemas y procedimientos de actualización → [hermes-docker/RUNBOOK.md](hermes-docker/RUNBOOK.md)
 
 ---
 
 ## soul.md
 
-`hermes-docker/hermes-config/soul.md` is Hermes's persona and operating instructions — the equivalent of `CLAUDE.md` in Claude Code, but for this agent. Bind-mounted read-only into the container at startup.
+`hermes-docker/hermes-config/soul.md` es la persona e instrucciones operativas de Hermes — el equivalente de `CLAUDE.md` en Claude Code, pero para este agente. Se monta de solo lectura en el contenedor al arrancar.
 
-It defines the orchestration contract: Hermes coordinates, Schema Service executes phases, Engram persists everything. Edit it to change how the agent reasons, what it prioritizes, or how it routes work. Changes take effect on the next `docker compose up`.
+Define el contrato de orquestación: Hermes coordina, Schema Service ejecuta las fases, Engram persiste todo. Edítalo para cambiar cómo razona el agente, qué prioriza o cómo enruta el trabajo. Los cambios se aplican en el próximo `docker compose up`.
 
 ---
 
-## Companion repo
+## Repositorio complementario
 
-Claude Code configuration (CLAUDE.md, SDD agents, slash commands, 40+ skills) lives in:
+La configuración de Claude Code (CLAUDE.md, agentes SDD, slash commands, más de 40 skills) vive en:
 [https://github.com/toniJC/dotfiles](https://github.com/toniJC/dotfiles)
 
-Clone it and run `bash install.sh` to symlink `~/.claude` from the versioned config.
+Clónalo y ejecuta `bash install.sh` para crear el symlink `~/.claude` desde la config versionada.
