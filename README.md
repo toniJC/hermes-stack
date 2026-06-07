@@ -1,6 +1,17 @@
 # Hermes Stack
 
-A fully local AI agent stack. Hermes runs in Docker as an SDD orchestrator, routes all LLM calls through a LiteLLM proxy that automatically injects coding standards, and logs every trace to Langfuse. A companion Design MCP server gives the agent access to a curated UI/UX knowledge base.
+Most people run local AI models in chat mode. This stack runs them **agentically** — the same way Claude Code orchestrates Claude, but with your own local models, each one assigned to the cognitive task it's best at.
+
+Hermes is an SDD orchestrator that executes structured development workflows (explore → propose → spec → design → tasks → apply → verify). Every phase is routed through LiteLLM to the model that fits the job: a reasoning model for architecture decisions, a coding model for implementation, a general model for exploration. You decide the mapping. The agent just calls an alias.
+
+```
+propose / design   →  DeepSeek R1 32B      (reasoning — needs to think through tradeoffs)
+spec / tasks       →  Qwen 2.5-Coder 32B   (structured output — fast and precise)
+apply              →  Qwen 2.5-Coder 32B   (code generation)
+explore / verify   →  Hermes 3 70B         (broad context, qualitative judgment)
+```
+
+No cloud required. No per-token cost for local phases. No chat window — structured, reproducible, artifact-producing workflows that persist to memory (Engram) and are observable in Langfuse.
 
 This repo is one half of a two-repo setup:
 - **hermes-stack** (this repo) — services, config, and scripts
@@ -8,14 +19,33 @@ This repo is one half of a two-repo setup:
 
 ---
 
-## Why this exists
+## How model routing works
 
-Running an AI agent directly against Anthropic's API works, but you lose three things:
-- **Skill injection** — there's no layer to automatically prepend coding standards to every request
-- **Local model routing** — switching between Anthropic, Together.ai, and local MLX models requires code changes
-- **Observability** — no traces, no cost tracking, no way to replay what the agent did
+LiteLLM acts as an OpenAI-compatible proxy. Each model is registered under an alias:
 
-This stack adds all three without changing how the agent is invoked.
+```yaml
+# litellm/litellm_config.yaml (simplified)
+models:
+  - model_name: local-thinking    # alias Hermes calls
+    litellm_params:
+      model: openai/deepseek-r1   # actual model on :8001
+      api_base: http://localhost:8001/v1
+
+  - model_name: local-coder
+    litellm_params:
+      model: openai/qwen-coder
+      api_base: http://localhost:8000/v1
+```
+
+Hermes calls `local-thinking` or `local-coder` — it never knows (or cares) what model is behind the alias. Swap a model, change a port, point an alias to Anthropic instead — zero changes to the agent.
+
+---
+
+## Automatic skill injection
+
+Before every LLM request, `skill_injector.py` (a LiteLLM `CustomLogger`) scans `~/.claude/skills/` and prepends the relevant coding standards to the system message — automatically. Hermes gets React patterns when working on a React project, .NET patterns for a .NET project, without any explicit instruction.
+
+This is the same mechanism that makes Claude Code context-aware, replicated at the proxy layer so every model benefits from it.
 
 ---
 
@@ -25,35 +55,28 @@ This stack adds all three without changing how the agent is invoked.
 You
  │  macOS launcher (Spotlight → HermesAgent.app)
  ▼
-Hermes (Docker) ──────────────────────────────────────────────────
+Hermes (Docker)  ─────────────────────────────────────────────────
   OpenCode AI agent                    port 9119 (web TUI)
-  Reads soul.md on startup (persona + SDD instructions)
+  Reads soul.md on startup (persona + SDD orchestration rules)
   │
-  │  All LLM calls go through LiteLLM proxy
+  │  All LLM calls → LiteLLM proxy
   ▼
 LiteLLM Proxy  :8002 ─────────────────────────────────────────────
-  OpenAI-compatible router
-  skill_injector.py fires on every request:
-    → scans ~/.claude/skills/ for matching coding standards
-    → prepends them to the system message automatically
-  Routes to:
-    anthropic/claude-*     (Anthropic API)
-    openai/MiniMax-M2.7    (Together.ai)
-    openai/<model>         (local MLX servers on :8000–:8006)
+  skill_injector.py → injects coding standards per request
+  Routes by alias:
+    local-thinking  → DeepSeek R1 32B   :8001
+    local-coder     → Qwen 2.5-Coder    :8000
+    local-hermes    → Hermes 3 70B      :8006
+    local-devstral  → Devstral 24B      :8005
+    claude-sonnet   → Anthropic API     (cloud fallback)
+    minimax-text    → Together.ai API   (cloud fallback)
   │
-  ├──► Langfuse  :3000  (traces, costs, evals)
+  ├──► Langfuse  :3000  (traces, costs, evals — every request logged)
   │
-  └──► Local MLX models (optional)
-         :8000  Qwen 2.5-Coder 32B   → spec, tasks, apply
-         :8001  DeepSeek R1 32B      → propose, design
-         :8005  Devstral 24B         → fallback / tool calling
-         :8006  Hermes 3 70B         → explore, verify
-  │
-  ▼
-hermes-design-mcp  :8012 ─────────────────────────────────────────
-  FastMCP SSE server
-  BM25 search over 14 UI/UX CSV datasets
-  Tools: search_design, search_stack, generate_design_system
+  └──► hermes-design-mcp  :8012
+         FastMCP SSE server
+         BM25 search over 14 UI/UX CSV datasets
+         Tools: search_design, search_stack, generate_design_system
 ```
 
 ---
@@ -73,16 +96,16 @@ hermes-design-mcp  :8012 ──────────────────�
 
 - **Docker Desktop** — for Hermes and Langfuse
 - **Python 3.11+** — for LiteLLM proxy and Design MCP server
-- **LiteLLM** — `pip install litellm` (or install via the mlx virtualenv)
-- **API keys** — Anthropic (required), Together.ai (optional), local MLX servers (optional)
+- **LiteLLM** — `pip install litellm`
+- **API keys** — Anthropic (required for cloud fallback), local MLX models (optional)
 
-Local MLX models are optional. If you only have Anthropic API keys, the stack works with `opus`, `sonnet`, and `haiku` aliases out of the box.
+Local models run via `mlx_lm.server` on Apple Silicon. If you only have Anthropic keys, the stack works with `claude-sonnet` and `claude-haiku` aliases — just skip the MLX servers.
 
 ---
 
 ## Secrets Setup
 
-Secrets are kept out of this repo and loaded at runtime from `~/.config/litellm/env`:
+Secrets live outside the repo in `~/.config/litellm/env`, sourced at runtime:
 
 ```bash
 mkdir -p ~/.config/litellm
@@ -93,9 +116,9 @@ LITELLM_MASTER_KEY=hermes-local-dev
 EOF
 ```
 
-This file is sourced automatically by `litellm/bin/litellm-launch.sh`. Never commit it.
+`litellm/bin/litellm-launch.sh` sources this file before starting the proxy. Never commit it.
 
-For Docker Compose variables (Langfuse DB password, etc.) copy `.env.example` to `.env` and fill in the values — `bash install.sh` does this for you.
+For Docker Compose variables (Langfuse DB password, etc.) copy `.env.example` → `.env`. `bash install.sh` does this automatically.
 
 ---
 
@@ -105,13 +128,13 @@ For Docker Compose variables (Langfuse DB password, etc.) copy `.env.example` to
 # 1. Clone and bootstrap
 git clone git@github.com:toniJC/hermes-stack.git
 cd hermes-stack
-bash install.sh          # creates .env from .env.example
+bash install.sh
 
 # 2. Set up secrets (see above)
 
 # 3. Start services (order matters)
 cd langfuse-docker  && docker compose up -d          # observability first
-cd ../litellm       && bash bin/litellm-launch.sh    # LiteLLM proxy
+cd ../litellm       && bash bin/litellm-launch.sh    # LiteLLM proxy + skill injector
 cd ../hermes-docker && docker compose up -d          # Hermes agent
 
 # 4. (Optional) Start Design MCP
@@ -126,29 +149,15 @@ For health checks, troubleshooting, and update procedures → [hermes-docker/RUN
 
 ## soul.md
 
-`hermes-docker/hermes-config/soul.md` is the agent's persona and operating instructions — the equivalent of `CLAUDE.md` but for Hermes. It's bind-mounted read-only into the container at startup.
+`hermes-docker/hermes-config/soul.md` is the agent's persona and operating instructions — equivalent to `CLAUDE.md` in Claude Code, but for Hermes. It's bind-mounted read-only into the container at startup.
 
-It defines:
-- Hermes's role as a thin SDD orchestrator (it coordinates, Schema Service executes)
-- How to detect the active project (`$HERMES_PROJECT`)
-- Engram MCP protocol (how to persist memory)
-- SDD phase routing rules
-
-Edit this file to change how Hermes behaves. Changes take effect on the next `docker compose up`.
-
----
-
-## skill_injector.py
-
-`litellm/skill_injector.py` is a LiteLLM `CustomLogger` that fires before every LLM request. It scans `~/.claude/skills/` for skill files matching the current request context and prepends the relevant coding standards to the system message — automatically, without any change to how Hermes calls the API.
-
-This means Hermes always has the right standards loaded (React, TypeScript, .NET, etc.) without needing to know which project it's working on.
+It defines Hermes's role as a thin SDD orchestrator: it coordinates, Schema Service executes, Engram persists. Edit this file to change how the agent behaves. Changes take effect on the next `docker compose up`.
 
 ---
 
 ## Companion Repo
 
-Claude Code configuration (CLAUDE.md, SDD agents, slash commands, skills) lives in:
+Claude Code configuration (CLAUDE.md, SDD agents, slash commands, 40+ skills) lives in:
 [https://github.com/toniJC/dotfiles](https://github.com/toniJC/dotfiles)
 
 Clone it and run `bash install.sh` to symlink `~/.claude` from the versioned config.
