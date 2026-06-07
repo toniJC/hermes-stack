@@ -264,6 +264,8 @@ La gestión la hace **launchd** (macOS). Los plists de `com.pirito.litellm` y `c
 
 ## Inicio rápido
 
+> **Modelos locales**: si quieres usar modelos MLX locales en lugar de APIs en la nube, consulta primero → [docs/local-models.md](docs/local-models.md)
+
 ```bash
 # 1. Clonar y configurar
 git clone git@github.com:toniJC/hermes-stack.git
@@ -272,10 +274,16 @@ bash install.sh
 
 # 2. Configurar secretos (ver sección anterior)
 
-# 3. Instalar Engram (si no lo tienes)
+# 3. Instalar Engram
 brew install engram
 
-# 4. Arrancar todo el stack de una vez (recomendado)
+# 4. Instalar servicios launchd (arranque automático al iniciar sesión)
+mkdir -p ~/bin
+cp bin/agentic-up.sh bin/devstral-proxy.py bin/engram-mcp-proxy-run.sh ~/bin/
+cp litellm/bin/litellm-launch.sh ~/bin/
+bash bin/launchd/install.sh
+
+# 5. Arrancar todo el stack
 bash bin/agentic-up.sh
 ```
 

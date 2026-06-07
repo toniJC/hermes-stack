@@ -264,6 +264,8 @@ For Docker Compose variables copy `.env.example` → `.env`. `bash install.sh` d
 
 ## Quick start
 
+> **Local models**: if you want to run MLX models locally instead of cloud APIs, read first → [docs/local-models.md](docs/local-models.md)
+
 ```bash
 # 1. Clone and bootstrap
 git clone git@github.com:toniJC/hermes-stack.git
@@ -272,10 +274,16 @@ bash install.sh
 
 # 2. Set up secrets (see above)
 
-# 3. Install Engram (if not already installed)
+# 3. Install Engram
 brew install engram
 
-# 4. Start the full stack at once (recommended)
+# 4. Install launchd services (auto-start at login)
+mkdir -p ~/bin
+cp bin/agentic-up.sh bin/devstral-proxy.py bin/engram-mcp-proxy-run.sh ~/bin/
+cp litellm/bin/litellm-launch.sh ~/bin/
+bash bin/launchd/install.sh
+
+# 5. Start the full stack
 bash bin/agentic-up.sh
 ```
 
