@@ -163,9 +163,11 @@ Proxy LiteLLM  :8002 ───────────────────�
 | Directorio | Función |
 |------------|---------|
 | `hermes-docker/` | Agente OpenCode en Docker — config, soul.md, launchers, RUNBOOK |
+| `schema-service/` | FastAPI que ejecuta todas las fases BMAD y SDD via LLM estructurado |
 | `hermes-design-mcp/` | Servidor MCP para base de conocimiento UI/UX |
 | `langfuse-docker/` | Dashboard de observabilidad (trazas, costes, evals) |
 | `litellm/` | Config del proxy LiteLLM + inyector de skills + script de arranque |
+| `bin/` | Scripts de gestión del stack (arranque, proxies, Engram) |
 
 ---
 
@@ -199,6 +201,67 @@ Para las variables de Docker Compose, copia `.env.example` → `.env`. `bash ins
 
 ---
 
+## Schema Service
+
+`schema-service/` es la capa de ejecución del stack. Hermes orquesta, pero nunca genera contenido SDD o BMAD por sí mismo — siempre delega en Schema Service via `curl`.
+
+Es una API FastAPI + [Instructor](https://github.com/jxnl/instructor) + Pydantic v2. Instructor fuerza a los modelos locales a devolver JSON estructurado validado por esquema — sin alucinaciones de formato, sin parsing frágil.
+
+```
+schema-service/
+├── app/
+│   ├── routes/
+│   │   ├── sdd.py       # endpoints /v1/sdd/* (explore, propose, spec, design, tasks, apply, verify)
+│   │   └── bmad.py      # endpoints /v1/bmad/* (analyze, prd, ux, architect, stories)
+│   ├── schemas/         # modelos Pydantic de entrada/salida por fase
+│   ├── prompts/         # prompts de sistema por fase (.txt)
+│   └── registry.py      # tabla modelo→alias→endpoint (fuente autoritativa de routing)
+└── calibration/         # harness de evaluación de calidad por fase
+```
+
+Arranque:
+```bash
+cd schema-service
+pip install -e .
+uvicorn app.main:app --host 0.0.0.0 --port 8010
+```
+
+O via `bin/agentic-up.sh`, que lo levanta automáticamente en el orden correcto.
+
+---
+
+## Engram — memoria persistente
+
+Engram es el servidor de memoria del stack. Proporciona persistencia entre sesiones via herramientas MCP — Hermes lo usa para guardar artefactos SDD/BMAD, decisiones, bugs resueltos y resúmenes de sesión.
+
+**Instalación:**
+```bash
+brew install engram
+```
+
+**Arquitectura de acceso:**
+
+Hermes corre en Docker y no puede llamar directamente a un proceso stdio. El stack usa `mcp-proxy` como puente:
+
+```
+Hermes (Docker)
+  │  MCP HTTP/SSE  →  :7438
+  ▼
+mcp-proxy (:7438)     ← bin/engram-mcp-proxy-run.sh (gestionado por launchd)
+  │  stdio
+  ▼
+engram mcp --tools=agent
+  │  REST
+  ▼
+Engram (:7437)        ← proceso principal de Engram
+```
+
+`bin/engram-mcp-proxy-run.sh` lee el workspace activo desde `~/.hermes-current-workspace` y arranca `mcp-proxy` desde ese directorio — así Engram detecta automáticamente el proyecto correcto.
+
+La gestión la hace **launchd** (macOS). Los plists de `com.pirito.litellm` y `com.pirito.engram-mcp-proxy` arrancan estos servicios automáticamente al iniciar sesión.
+
+---
+
 ## Inicio rápido
 
 ```bash
@@ -209,12 +272,34 @@ bash install.sh
 
 # 2. Configurar secretos (ver sección anterior)
 
-# 3. Arrancar servicios (el orden importa)
-cd langfuse-docker  && docker compose up -d          # observabilidad primero
-cd ../litellm       && bash bin/litellm-launch.sh    # proxy LiteLLM + inyector de skills
-cd ../hermes-docker && docker compose up -d          # agente Hermes
+# 3. Instalar Engram (si no lo tienes)
+brew install engram
 
-# 4. (Opcional) Arrancar Design MCP
+# 4. Arrancar todo el stack de una vez (recomendado)
+bash bin/agentic-up.sh
+```
+
+`agentic-up.sh` levanta los servicios en orden con health-gating entre tiers:
+
+```
+T0  LiteLLM proxy     :8002   (launchd — arranca automáticamente al iniciar sesión)
+T1  Engram            :7437
+T1b Engram MCP proxy  :7438
+T2  Modelos MLX       :8000 :8001 :8006  (en paralelo)
+    Devstral llama    :8004
+T3  Devstral proxy    :8005
+T4  Schema Service    :8010
+```
+
+Es idempotente — los servicios ya activos se saltan. Modo diagnóstico: `bash bin/agentic-up.sh --check`
+
+Luego arranca Hermes:
+```bash
+cd hermes-docker && docker compose up -d
+```
+
+Opcional — Design MCP:
+```bash
 cd hermes-design-mcp && bash run.sh
 ```
 

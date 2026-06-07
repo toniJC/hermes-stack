@@ -30,6 +30,14 @@ langfuse-data/
 hermes-docker/projects/
 hermes-native/projects/
 
+# Schema Service
+schema-service/calibration/runs/
+schema-service/.venv/
+schema-service/__pycache__/
+
+# Bin scripts runtime
+bin/__pycache__/
+
 # IDE
 .idea/
 .vscode/
