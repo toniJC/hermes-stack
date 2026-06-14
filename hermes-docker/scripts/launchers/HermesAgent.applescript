@@ -29,7 +29,7 @@ try
 	-- The volume mount becomes: workspacePath → /workspace  (handled by compose).
 	-- HERMES_PROJECT is passed as an env var so Engram detects the project correctly.
 	set cmd to "export PATH=/opt/homebrew/bin:/usr/local/bin:$PATH && " & ¬
-		"cd ~/projects/hermes-docker && " & ¬
+		"cd ~/projects/hermes-stack/hermes-docker && " & ¬
 		"HERMES_PROJECT=" & quoted form of projectName & ¬
 		" WORKSPACE_PATH=" & quoted form of workspacePath & ¬
 		" docker compose run --rm -p 9119:9119" & ¬

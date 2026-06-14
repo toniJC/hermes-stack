@@ -59,10 +59,10 @@ Every phase has a different cognitive profile. Reasoning models excel at tradeof
 
 ```
 BMAD analyze / prd / architect   →  DeepSeek R1 32B      (deep reasoning)
-BMAD ux                          →  Hermes 3 70B          (design + broad context)
+BMAD ux                          →  Qwen3 32B             (design + broad context)
 BMAD stories                     →  Qwen 2.5-Coder 32B   (structured output)
 
-SDD explore / verify             →  Hermes 3 70B          (qualitative judgment)
+SDD explore / verify             →  Qwen3 32B             (qualitative judgment)
 SDD propose / design             →  DeepSeek R1 32B       (architectural decisions)
 SDD spec / tasks / apply         →  Qwen 2.5-Coder 32B   (precision + code gen)
 ```
@@ -143,11 +143,9 @@ Hermes (Docker)  ─────────────────────
 LiteLLM Proxy  :8002 ─────────────────────────────────────────────
   skill_injector.py → injects coding standards per request
   Routes by alias:
-    local-hermes      → Hermes 3 70B        :8006  (explore, verify, bmad-ux)
+    local-hermes      → Qwen3 32B           :8006  (explore, verify, bmad-ux)
     local-thinking    → DeepSeek R1 32B     :8001  (propose, design, bmad-analyze/prd/architect)
     local-coder       → Qwen 2.5-Coder 32B  :8000  (spec, tasks, apply, bmad-stories)
-    local-architect   → Llama 3.3 70B       :8003  (available — no phase assigned yet)
-    local-devstral    → Devstral 24B        :8005  (fallback / tool calling)
     claude-sonnet     → Anthropic API             (cloud fallback)
   │
   ├──► Langfuse  :3000  (traces, costs, evals — every request logged)
@@ -280,7 +278,7 @@ brew install engram
 
 # 4. Install launchd services (auto-start at login)
 mkdir -p ~/bin
-cp bin/agentic-up.sh bin/devstral-proxy.py bin/engram-mcp-proxy-run.sh ~/bin/
+cp bin/agentic-up.sh bin/engram-mcp-proxy-run.sh ~/bin/
 cp litellm/bin/litellm-launch.sh ~/bin/
 bash bin/launchd/install.sh
 
@@ -294,9 +292,7 @@ bash bin/agentic-up.sh
 T0  LiteLLM proxy     :8002   (launchd — starts automatically at login)
 T1  Engram            :7437
 T1b Engram MCP proxy  :7438
-T2  MLX models        :8000 :8001 :8003 :8006  (in parallel)
-    Devstral llama    :8004
-T3  Devstral proxy    :8005
+T2  MLX models        :8000 :8001 :8006  (in parallel)
 T4  Schema Service    :8010
 ```
 

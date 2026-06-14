@@ -45,22 +45,7 @@ mcp-proxy --version    # debe mostrar versión
 
 ---
 
-## 2. Instalar llama.cpp (para Devstral GGUF)
-
-Devstral corre via `llama-server` (llama.cpp), no MLX. Instalar via Homebrew:
-
-```bash
-brew install llama.cpp
-```
-
-Verificar:
-```bash
-llama-server --version
-```
-
----
-
-## 3. Descargar los modelos
+## 2. Descargar los modelos
 
 Crea el directorio de modelos:
 
@@ -99,42 +84,18 @@ Tamaño aproximado: **18 GB**
 
 ---
 
-### Hermes 3 70B (alias: `local-hermes` — explore, verify, bmad-ux)
+### Qwen3 32B (alias: `local-hermes` / `hermes-orchestrator` — explore, verify, bmad-ux)
 
 ```bash
-huggingface-cli download mlx-community/Hermes-3-Llama-3.1-70B-4bit \
-  --local-dir ~/models/hermes3-70b-mlx
+huggingface-cli download mlx-community/Qwen3-32B-4bit \
+  --local-dir ~/models/qwen3-32b-mlx
 ```
 
-Tamaño aproximado: **40 GB**
+Tamaño aproximado: **18 GB**
 
 ---
 
-### Llama 3.3 70B (alias: `local-architect` — disponible, sin fase asignada aún)
-
-```bash
-huggingface-cli download mlx-community/Llama-3.3-70B-Instruct-4bit \
-  --local-dir ~/models/llama3.3-70b-mlx
-```
-
-Tamaño aproximado: **40 GB**
-
----
-
-### Devstral Small 24B GGUF (alias: `local-devstral` — fallback, tool calling)
-
-```bash
-mkdir -p ~/models/devstral-small-2505-gguf
-huggingface-cli download mistralai/Devstral-Small-2505-GGUF \
-  --include "Devstral-Small-2505-Q4_K_M.gguf" \
-  --local-dir ~/models/devstral-small-2505-gguf
-```
-
-Tamaño aproximado: **15 GB**
-
----
-
-## 4. Verificar la estructura de modelos
+## 3. Verificar la estructura de modelos
 
 Al terminar, `~/models/` debe tener esta estructura:
 
@@ -142,10 +103,7 @@ Al terminar, `~/models/` debe tener esta estructura:
 ~/models/
 ├── qwen2.5-coder-32b-mlx/        # Qwen 2.5-Coder 32B (MLX)
 ├── deepseek-r1-32b-mlx/          # DeepSeek R1 32B (MLX)
-├── hermes3-70b-mlx/              # Hermes 3 70B (MLX)
-├── llama3.3-70b-mlx/             # Llama 3.3 70B (MLX)
-└── devstral-small-2505-gguf/
-    └── Devstral-Small-2505-Q4_K_M.gguf
+└── qwen3-32b-mlx/                # Qwen3 32B (MLX)
 ```
 
 Verifica con `agentic-up.sh`:
@@ -157,7 +115,7 @@ Si algún modelo falta, el script reportará el error exacto con la ruta esperad
 
 ---
 
-## 5. Arranque manual de modelos (sin agentic-up.sh)
+## 4. Arranque manual de modelos (sin agentic-up.sh)
 
 Si prefieres arrancar los modelos manualmente:
 
@@ -170,25 +128,13 @@ mlx_lm.server --model ~/models/qwen2.5-coder-32b-mlx --port 8000 --host 0.0.0.0 
 # DeepSeek R1 — puerto 8001
 mlx_lm.server --model ~/models/deepseek-r1-32b-mlx --port 8001 --host 0.0.0.0 &
 
-# Hermes 3 70B — puerto 8006 (debe escuchar en 0.0.0.0 para ser accesible desde Docker)
-mlx_lm.server --model ~/models/hermes3-70b-mlx --port 8006 --host 0.0.0.0 &
-
-# Llama 3.3 70B — puerto 8003
-mlx_lm.server --model ~/models/llama3.3-70b-mlx --port 8003 --host 0.0.0.0 &
-
-# Devstral GGUF — puerto 8004
-llama-server \
-  --model ~/models/devstral-small-2505-gguf/Devstral-Small-2505-Q4_K_M.gguf \
-  --port 8004 --host 0.0.0.0 \
-  --n-gpu-layers 999 &
-
-# Devstral proxy (convierte tool calls al formato OpenAI) — puerto 8005
-python ~/bin/devstral-proxy.py &
+# Qwen3 32B — puerto 8006 (debe escuchar en 0.0.0.0 para ser accesible desde Docker)
+mlx_lm.server --model ~/models/qwen3-32b-mlx --port 8006 --host 0.0.0.0 &
 ```
 
 ---
 
-## 6. Sin modelos locales (solo API en la nube)
+## 5. Sin modelos locales (solo API en la nube)
 
 Si no tienes Apple Silicon o prefieres usar solo Anthropic, edita `litellm/litellm_config.yaml` y apunta todos los alias a `claude-sonnet` o `claude-haiku`:
 

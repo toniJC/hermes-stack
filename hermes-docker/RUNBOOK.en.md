@@ -43,9 +43,7 @@ Schema Service :8010  (FastAPI + Instructor + Pydantic v2)
 Local MLX models (mlx_lm.server):
   :8000  Qwen 2.5-Coder 32B   alias: local-coder      → spec, tasks, apply, archive, bmad-stories
   :8001  DeepSeek R1 32B       alias: local-thinking   → propose, design, bmad-analyze, bmad-prd, bmad-architect
-  :8003  Llama 3.3 70B         alias: local-architect  → available, no phase assigned
-  :8005  Devstral 24B          alias: local-devstral   → fallback / tool calling
-  :8006  Hermes 3 70B          alias: local-hermes     → explore, verify, bmad-ux  [MUST bind 0.0.0.0]
+  :8006  Qwen3 32B             alias: local-hermes     → explore, verify, bmad-ux  [MUST bind 0.0.0.0]
   │
   │  MCP  http://host.docker.internal:7438/mcp
   ▼
@@ -105,12 +103,11 @@ WORKSPACE_PATH=/path/to/project docker compose run --rm -p 9119:9119 hermes \
 | 2 | **Langfuse** | `cd ~/projects/langfuse-docker && docker compose up -d` | `curl -s http://localhost:3000/api/public/health` |
 | 3 | MLX model :8000 (coder) | `mlx_lm.server --model ~/models/qwen2.5-coder-32b-mlx --port 8000` | `curl -s http://localhost:8000/v1/models` |
 | 4 | MLX model :8001 (thinking) | `mlx_lm.server --model ~/models/deepseek-r1-32b-mlx --port 8001` | `curl -s http://localhost:8001/v1/models` |
-| 5 | MLX model :8005 (devstral) | `mlx_lm.server --model devstral --port 8005` | `curl -s http://localhost:8005/v1/models` |
-| 6 | MLX model :8006 (hermes) | `mlx_lm.server --model ~/models/hermes3-70b-mlx --port 8006 --host 0.0.0.0` | `curl -s http://localhost:8006/v1/models` |
+| 5 | MLX model :8006 (hermes) | `mlx_lm.server --model ~/models/qwen3-32b-mlx --port 8006 --host 0.0.0.0` | `curl -s http://localhost:8006/v1/models` |
 | 7 | Schema Service | `cd ~/projects/schema-service && uvicorn app.main:app --port 8010` | `curl -s http://localhost:8010/health` |
 | 8 | HermesAgent | `cd ~/projects/hermes-docker && docker compose run --rm hermes hermes chat` | interactive CLI appears |
 
-> **Critical:** Hermes 3 :8006 **must** be started with `--host 0.0.0.0` — the Docker container reaches it via `host.docker.internal` and the default `127.0.0.1` binding is not reachable from inside the container.
+> **Critical:** Qwen3 32B :8006 **must** be started with `--host 0.0.0.0` — the Docker container reaches it via `host.docker.internal` and the default `127.0.0.1` binding is not reachable from inside the container.
 
 > **LiteLLM**: if it didn't start automatically (e.g. after a launchd failure), start it manually: `launchctl start com.pirito.litellm` or check logs at `~/Library/Logs/litellm/stderr.log`.
 
@@ -128,7 +125,7 @@ WORKSPACE_PATH=/path/to/your/project docker compose run --rm hermes hermes chat
 
 ```bash
 # Stop all running MLX servers (Ctrl+C in each terminal, or kill by port)
-lsof -ti :8000,:8001,:8003,:8005,:8006,:8002,:8010 | xargs kill -9
+lsof -ti :8000,:8001,:8006,:8002,:8010 | xargs kill -9
 
 # Stop Langfuse (data persisted in Docker volume — not lost)
 cd ~/projects/langfuse-docker && docker compose down
@@ -155,13 +152,13 @@ MiniMax M2.7 (HermesAgent) orchestrates all phases. It never generates SDD conte
 
 | Phase | Endpoint | Model alias | Worker model |
 |-------|----------|-------------|--------------|
-| explore | `POST /v1/sdd/explore` | `local-hermes` | Hermes 3 70B :8006 |
+| explore | `POST /v1/sdd/explore` | `local-hermes` | Qwen3 32B :8006 |
 | propose | `POST /v1/sdd/propose` | `local-thinking` | DeepSeek R1 32B :8001 |
 | spec | `POST /v1/sdd/spec` | `local-coder` | Qwen 2.5-Coder 32B :8000 |
 | design | `POST /v1/sdd/design` | `local-thinking` | DeepSeek R1 32B :8001 |
 | tasks | `POST /v1/sdd/tasks` | `local-coder` | Qwen 2.5-Coder 32B :8000 |
 | apply | `POST /v1/sdd/apply` | `local-coder` | Qwen 2.5-Coder 32B :8000 |
-| verify | `POST /v1/sdd/verify` | `local-hermes` | Hermes 3 70B :8006 |
+| verify | `POST /v1/sdd/verify` | `local-hermes` | Qwen3 32B :8006 |
 
 ### Retry strategy (Schema Service)
 
@@ -170,7 +167,7 @@ Each endpoint has a 3-attempt degradation loop:
 2. Attempt 2 — `instructor.Mode.JSON` (repeat)
 3. Attempt 3 — `instructor.Mode.MD_JSON` at the phase temperature
 
-LiteLLM router fallbacks: `local-thinking → local-devstral → local-coder`
+LiteLLM router fallbacks: `local-thinking → local-coder`
 
 ### Artifact persistence (Engram)
 
@@ -210,7 +207,7 @@ Full pipeline: `idea → analyze → prd → [ux] → architect → stories → 
 |-------|----------|-------------|--------------|
 | analyze | `POST /v1/bmad/analyze` | `local-thinking` | DeepSeek R1 32B :8001 |
 | prd | `POST /v1/bmad/prd` | `local-thinking` | DeepSeek R1 32B :8001 |
-| ux | `POST /v1/bmad/ux` | `local-hermes` | Hermes 3 70B :8006 |
+| ux | `POST /v1/bmad/ux` | `local-hermes` | Qwen3 32B :8006 |
 | architect | `POST /v1/bmad/architect` | `local-thinking` | DeepSeek R1 32B :8001 |
 | stories | `POST /v1/bmad/stories` | `local-coder` | Qwen 2.5-Coder 32B :8000 |
 
@@ -273,7 +270,7 @@ See Section 17 of soul.md for the complete procedure with jq snippet.
 - **Wrapper script**: `~/bin/litellm-launch.sh` (loads env vars from `~/.config/litellm/env`)
 - **API keys**: `~/.config/litellm/env` (chmod 600) — edit to add/rotate keys
 - **Logs**: `~/Library/Logs/litellm/stdout.log` and `stderr.log`
-- **Configured fallbacks**: `local-thinking → local-devstral → local-coder`
+- **Configured fallbacks**: `local-thinking → local-coder`
 - **Control commands**:
   ```bash
   launchctl start com.pirito.litellm   # start manually
@@ -290,9 +287,7 @@ See Section 17 of soul.md for the complete procedure with jq snippet.
 |------|-------|-------|-------|
 | :8000 | Qwen 2.5-Coder 32B | `local-coder` | |
 | :8001 | DeepSeek R1 32B | `local-thinking` | Has internal reasoning tokens before visible output |
-| :8003 | Llama 3.3 70B | `local-architect` | |
-| :8005 | Devstral 24B | `local-devstral` | fallback / tool calling |
-| :8006 | Hermes 3 70B | `local-hermes` | **Must be started with `--host 0.0.0.0`** |
+| :8006 | Qwen3 32B | `local-hermes` | **Must be started with `--host 0.0.0.0`** |
 
 ### mcp-proxy
 
@@ -349,8 +344,7 @@ See Section 17 of soul.md for the complete procedure with jq snippet.
   - T0: Docker Desktop (auto-start if not running)
   - T1: Engram (:7437)
   - T1b: mcp-proxy (:7438) — stdio→HTTP/SSE bridge for Docker
-  - T2: MLX models (:8000, :8001, :8003, :8004, :8005, :8006) — in parallel with health-gating
-  - T3: devstral-proxy (:8005)
+  - T2: MLX models (:8000, :8001, :8006) — in parallel with health-gating
   - T4: Schema Service (:8010)
 - **LiteLLM is not managed here** — starts via launchd on Mac boot
 - **Check mode**: `agentic-up.sh --check` — verifies status without starting anything
@@ -424,7 +418,7 @@ launchctl kickstart -k gui/$(id -u)/com.pirito.litellm
 
 ---
 
-### ❌ Hermes 3 :8006 not reachable from Docker
+### ❌ Qwen3 32B :8006 not reachable from Docker
 
 **Cause**: `mlx_lm.server` for :8006 was started without `--host 0.0.0.0`. The default `127.0.0.1` binding is not reachable via `host.docker.internal`.
 
@@ -434,7 +428,7 @@ launchctl kickstart -k gui/$(id -u)/com.pirito.litellm
 lsof -ti :8006 | xargs kill -9
 
 # Restart with the correct binding
-mlx_lm.server --model ~/models/hermes3-70b-mlx --port 8006 --host 0.0.0.0
+mlx_lm.server --model ~/models/qwen3-32b-mlx --port 8006 --host 0.0.0.0
 ```
 
 **Verification** (from inside the container):

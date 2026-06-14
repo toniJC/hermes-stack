@@ -17,14 +17,10 @@ from typing import Optional
 # ---------------------------------------------------------------------------
 
 SKILLS_DIR = os.path.expanduser("~/.claude/skills")
-MAX_SKILLS = 3
+MAX_SKILLS = 5
 EXCLUDED_PREFIXES = ("sdd-", "skill-")
 EXCLUDED_NAMES = {
     "_shared",
-    "branch-pr",
-    "chained-pr",
-    "github-pr",
-    "work-unit-commits",
     "cognitive-doc-design",
     "comment-writer",
     "issue-creation",
