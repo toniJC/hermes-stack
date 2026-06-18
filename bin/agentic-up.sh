@@ -5,9 +5,8 @@
 #   T0 verify: LiteLLM :8002 (launchd-managed)
 #   T1:        Engram :7437
 #   T1b:       Engram MCP proxy :7438 (stdio→HTTP/SSE bridge for Docker agents)
-#   T2 par:    MLX coder :8000 | MLX thinking :8001 | llama devstral :8004 | MLX hermes :8006 | MLX architect :8003
-#   T3:        devstral-proxy :8005
-#   T4:        Schema Service :8010
+#   T2 par:    MLX thinking :8001 | MLX hermes :8006
+#   T3:        Schema Service :8010
 #
 # Idempotent: healthy components are skipped. Stale processes (port bound, health failing)
 # are reported with kill hint — never auto-killed.
@@ -27,27 +26,22 @@ set -uo pipefail
 
 # ───────────────────────────── config ─────────────────────────────
 # mlx_lm.server and uvicorn live in the shared MLX venv — prepend to PATH
-export PATH="${MLX_VENV_BIN:-$HOME/projects/mlx-qwen/mlx_env/bin}:${PATH}"
+export PATH="/Users/pirito/projects/mlx-qwen/mlx_env/bin:${PATH}"
 
 LOG_DIR="${HOME}/Library/Logs/agentic-stack"
-MODELS_DIR="${MODELS_DIR:-$HOME/models}"
+MODELS_DIR="/Users/pirito/models"
 LLAMA_BIN="/opt/homebrew/bin/llama-server"
-DEVSTRAL_PROXY="${DEVSTRAL_PROXY:-$HOME/bin/devstral-proxy.py}"
-SCHEMA_SERVICE_DIR="${SCHEMA_SERVICE_DIR:-$HOME/projects/schema-service}"
+SCHEMA_SERVICE_DIR="/Users/pirito/projects/schema-service"
 
-DEVSTRAL_GGUF="${MODELS_DIR}/devstral-small-2505-gguf/Devstral-Small-2505-Q4_K_M.gguf"
-MLX_CODER="${MODELS_DIR}/qwen2.5-coder-32b-mlx"
 MLX_THINKING="${MODELS_DIR}/deepseek-r1-32b-mlx"
-MLX_HERMES="${MODELS_DIR}/hermes3-70b-mlx"
-MLX_ARCHITECT="${MODELS_DIR}/llama3.3-70b-mlx"
+MLX_HERMES="${MODELS_DIR}/qwen3.6-27b-8bit"
 
-LANGFUSE_DOCKER_DIR="${LANGFUSE_DOCKER_DIR:-$HOME/projects/langfuse-docker}"
+LANGFUSE_DOCKER_DIR="/Users/pirito/projects/langfuse-docker"
 LANGFUSE_TIMEOUT=60
 
 T1_TIMEOUT=30
 T1B_TIMEOUT=15
 T2_TIMEOUT=120
-T3_TIMEOUT=15
 T4_TIMEOUT=30
 
 START_TS=$(date +%s)
@@ -140,13 +134,8 @@ preflight() {
   command -v curl          >/dev/null || die "curl not on PATH"
   command -v lsof          >/dev/null || die "lsof not on PATH"
 
-  [[ -x "$LLAMA_BIN" ]]    || die "llama-server not found at $LLAMA_BIN"
-  [[ -f "$DEVSTRAL_GGUF" ]] || die "devstral GGUF missing: $DEVSTRAL_GGUF"
-  [[ -f "$DEVSTRAL_PROXY" ]] || die "devstral-proxy.py missing: $DEVSTRAL_PROXY"
-  [[ -d "$MLX_CODER"    ]]  || die "MLX coder model missing: $MLX_CODER"
   [[ -d "$MLX_THINKING" ]]  || die "MLX thinking model missing: $MLX_THINKING"
   [[ -d "$MLX_HERMES"   ]]  || die "MLX hermes model missing: $MLX_HERMES"
-  [[ -d "$MLX_ARCHITECT" ]] || die "MLX architect model missing: $MLX_ARCHITECT"
   [[ -d "$SCHEMA_SERVICE_DIR" ]] || die "Schema Service repo missing: $SCHEMA_SERVICE_DIR"
 }
 
@@ -218,11 +207,7 @@ check_all() {
     "litellm          8002 http://127.0.0.1:8002/v1/models"
     "engram           7437 http://127.0.0.1:7437/health"
     "engram-mcp-proxy 7438 http://127.0.0.1:7438/sse"
-    "mlx-coder        8000 http://127.0.0.1:8000/v1/models"
     "mlx-thinking     8001 http://127.0.0.1:8001/v1/models"
-    "mlx-architect    8003 http://127.0.0.1:8003/v1/models"
-    "llama-devstral   8004 http://127.0.0.1:8004/health"
-    "devstral-proxy   8005 http://127.0.0.1:8005/v1/models"
     "mlx-hermes       8006 http://127.0.0.1:8006/v1/models"
     "schema-service   8010 http://127.0.0.1:8010/healthz"
   )
@@ -319,7 +304,7 @@ t2_launch_one() {
 }
 
 t2_wait_all() {
-  local names=(mlx-coder mlx-thinking llama-devstral mlx-hermes mlx-architect)
+  local names=(mlx-thinking mlx-hermes)
   local pids=()
   for name in "${names[@]}"; do
     local v; v=$(_t2_get_status "$name")
@@ -355,54 +340,30 @@ t2_parallel_models() {
   _T2_TMPDIR=$(mktemp -d)
   trap 'rm -rf "$_T2_TMPDIR"' EXIT
 
-  t2_launch_one "mlx-coder"      8000 "http://127.0.0.1:8000/v1/models" "$LOG_DIR/mlx-coder.log" \
-    mlx_lm.server --model "$MLX_CODER" --port 8000 --host 0.0.0.0
   t2_launch_one "mlx-thinking"   8001 "http://127.0.0.1:8001/v1/models" "$LOG_DIR/mlx-thinking.log" \
-    mlx_lm.server --model "$MLX_THINKING" --port 8001 --host 0.0.0.0
-  t2_launch_one "llama-devstral" 8004 "http://127.0.0.1:8004/health"    "$LOG_DIR/llama-devstral.log" \
-    "$LLAMA_BIN" -m "$DEVSTRAL_GGUF" --port 8004 --host 0.0.0.0 -ngl 99
+    mlx_lm.server --model "$MLX_THINKING" --port 8001 --host 0.0.0.0 \
+      --prompt-cache-size 1
   t2_launch_one "mlx-hermes"     8006 "http://127.0.0.1:8006/v1/models" "$LOG_DIR/mlx-hermes.log" \
-    mlx_lm.server --model "$MLX_HERMES" --port 8006 --host 0.0.0.0
-  t2_launch_one "mlx-architect"  8003 "http://127.0.0.1:8003/v1/models" "$LOG_DIR/mlx-architect.log" \
-    mlx_lm.server --model "$MLX_ARCHITECT" --port 8003 --host 0.0.0.0
+    mlx_lm.server --model "$MLX_HERMES" --port 8006 --host 0.0.0.0 \
+      --prompt-cache-size 2
 
-  for name in mlx-coder mlx-thinking llama-devstral mlx-hermes mlx-architect; do
+  for name in mlx-thinking mlx-hermes; do
     [[ "$(_t2_get_status "$name")" == "stale" ]] && die "stale process on $name; resolve manually"
   done
 
   t2_wait_all
 
   local critical_fail=0
-  for n in mlx-coder mlx-thinking llama-devstral; do
+  for n in mlx-thinking; do
     [[ "$(_t2_get_status "$n")" == "fail" ]] && critical_fail=1
   done
   if [[ "$(_t2_get_status "mlx-hermes")" == "fail" ]]; then
     status_warn "mlx-hermes" 8006 "Schema Service will work; HermesAgent will not"
   fi
-  if [[ "$(_t2_get_status "mlx-architect")" == "fail" ]]; then
-    status_warn "mlx-architect" 8003 "local-architect alias unavailable"
-  fi
   [[ $critical_fail -eq 1 ]] && die "tier 2 critical model(s) failed — aborting"
 }
 
-# ───────────────────────────── tier 3: devstral-proxy ─────────────
-t3_devstral_proxy() {
-  echo
-  echo "── Tier 3: devstral-proxy ──"
-  start_if_dead "devstral-proxy" 8005 "http://127.0.0.1:8005/v1/models" \
-    "$LOG_DIR/devstral-proxy.log" -- python3 "$DEVSTRAL_PROXY"
-  local rc=$?
-  [[ $rc -eq 2 ]] && die "devstral-proxy :8005 stale"
-  if wait_for_health "http://127.0.0.1:8005/v1/models" "$T3_TIMEOUT"; then
-    status_ok "devstral-proxy" 8005
-  else
-    status_fail "devstral-proxy" 8005 "no health within ${T3_TIMEOUT}s"
-    tail_log "$LOG_DIR/devstral-proxy.log"
-    die "tier 3 failed"
-  fi
-}
-
-# ───────────────────────────── tier 4: schema service ─────────────
+# ───────────────────────────── tier 3: schema service ─────────────
 t4_schema_service() {
   echo
   echo "── Tier 4: schema-service ──"
@@ -433,11 +394,7 @@ print_summary() {
     "litellm          8002 http://127.0.0.1:8002/v1/models"
     "engram           7437 http://127.0.0.1:7437/health"
     "engram-mcp-proxy 7438 http://127.0.0.1:7438/sse"
-    "mlx-coder        8000 http://127.0.0.1:8000/v1/models"
     "mlx-thinking     8001 http://127.0.0.1:8001/v1/models"
-    "mlx-architect    8003 http://127.0.0.1:8003/v1/models"
-    "llama-devstral   8004 http://127.0.0.1:8004/health"
-    "devstral-proxy   8005 http://127.0.0.1:8005/v1/models"
     "mlx-hermes       8006 http://127.0.0.1:8006/v1/models"
     "schema-service   8010 http://127.0.0.1:8010/healthz"
   )
@@ -491,7 +448,6 @@ main() {
   t1_engram
   t1b_engram_mcp_proxy
   t2_parallel_models
-  t3_devstral_proxy
   t4_schema_service
   print_summary
 }
